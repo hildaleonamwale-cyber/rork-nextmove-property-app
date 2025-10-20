@@ -19,12 +19,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import Colors from '@/constants/colors';
 import SuccessPrompt from '@/components/SuccessPrompt';
-import { trpc } from '@/lib/trpc';
-import { setAuthToken, setUserData } from '@/utils/auth';
+import { signup as supabaseSignup } from '@/utils/supabase-auth';
+import { useUser } from '@/contexts/UserContext';
 
 export default function SignupScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { refetch } = useUser();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -35,8 +36,6 @@ export default function SignupScreen() {
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-
-  const signupMutation = trpc.auth.signup.useMutation();
 
   const handleSignup = useCallback(async () => {
     if (!name || !email || !password) {
@@ -58,20 +57,19 @@ export default function SignupScreen() {
     try {
       setIsLoading(true);
       console.log('Creating account:', { name, email, phone });
-      console.log('tRPC Base URL:', process.env.EXPO_PUBLIC_RORK_API_BASE_URL);
       
-      const result = await signupMutation.mutateAsync({
+      const { user } = await supabaseSignup({
         name,
         email,
         phone: phone || undefined,
         password,
       });
 
-      await setAuthToken(result.token);
-      await setUserData(result.user);
       await AsyncStorage.setItem('@user_mode', 'client');
 
-      console.log('Signup successful:', result.user);
+      console.log('Signup successful:', user);
+
+      await refetch();
 
       setShowSuccess(true);
       setTimeout(() => {
@@ -80,18 +78,10 @@ export default function SignupScreen() {
       }, 2000);
     } catch (error: any) {
       console.error('Signup error:', error);
-      console.error('Error details:', {
-        message: error.message,
-        cause: error.cause,
-        data: error.data,
-        shape: error.shape,
-      });
       
       let errorMessage = 'An error occurred during signup';
       
-      if (error.message?.includes('Failed to fetch')) {
-        errorMessage = 'Cannot connect to server. Please check your internet connection and try again.';
-      } else if (error.data?.code === 'CONFLICT') {
+      if (error.message?.includes('User already registered')) {
         errorMessage = 'An account with this email already exists';
       } else if (error.message) {
         errorMessage = error.message;
@@ -101,7 +91,7 @@ export default function SignupScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [name, email, phone, password, confirmPassword, agreeTerms, router, signupMutation]);
+  }, [name, email, phone, password, confirmPassword, agreeTerms, router, refetch]);
 
   return (
     <View style={styles.container}>

@@ -19,21 +19,20 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import Colors from '@/constants/colors';
 import { useSuperAdmin } from '@/contexts/SuperAdminContext';
-import { trpc } from '@/lib/trpc';
-import { setAuthToken, setUserData } from '@/utils/auth';
+import { login as supabaseLogin } from '@/utils/supabase-auth';
+import { useUser } from '@/contexts/UserContext';
 
 export default function LoginScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { enableSuperAdmin } = useSuperAdmin();
+  const { refetch } = useUser();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [loginMode, setLoginMode] = useState<'user' | 'admin'>('user');
   const [isLoading, setIsLoading] = useState(false);
-
-  const loginMutation = trpc.auth.login.useMutation();
 
   const handleLogin = useCallback(async () => {
     if (!email || !password) {
@@ -45,21 +44,18 @@ export default function LoginScreen() {
       setIsLoading(true);
       console.log('Logging in with:', { email, loginMode });
 
-      const result = await loginMutation.mutateAsync({
-        email,
-        password,
-      });
+      const { user } = await supabaseLogin({ email, password });
 
-      await setAuthToken(result.token);
-      await setUserData(result.user);
-      await AsyncStorage.setItem('@user_mode', result.user.role === 'admin' ? 'admin' : 'client');
+      await AsyncStorage.setItem('@user_mode', user.role === 'admin' ? 'admin' : 'client');
 
-      console.log('Login successful:', result.user);
+      console.log('Login successful:', user);
+
+      await refetch();
       
-      if (loginMode === 'admin' || result.user.role === 'admin') {
+      if (loginMode === 'admin' || user.role === 'admin') {
         await enableSuperAdmin();
         router.replace('/admin/dashboard' as any);
-      } else if (result.user.role === 'agent' || result.user.role === 'agency') {
+      } else if (user.role === 'agent' || user.role === 'agency') {
         router.replace('/agent/dashboard' as any);
       } else {
         router.replace('/(tabs)/home' as any);
@@ -70,7 +66,7 @@ export default function LoginScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [email, password, loginMode, router, enableSuperAdmin, loginMutation]);
+  }, [email, password, loginMode, router, enableSuperAdmin, refetch]);
 
   const handleSkipLogin = () => {
     router.replace('/(tabs)/home' as any);

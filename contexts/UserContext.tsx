@@ -1,81 +1,52 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import createContextHook from "@nkzw/create-context-hook";
-import { trpc } from "@/lib/trpc";
+import { getCurrentUser, updateProfile as updateProfileSupabase, uploadAvatar as uploadAvatarSupabase, SupabaseUser } from "@/utils/supabase-auth";
 
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-  phone?: string | null;
-  avatar?: string | null;
-  role: "client" | "agent" | "agency" | "admin";
-  verified: boolean;
-  blocked: boolean;
-  createdAt: Date | null;
-  lastActive: Date | null;
-  accountTier: "free" | "pro" | "agency";
-  hasAgentProfile: boolean;
-}
+export type User = SupabaseUser;
 
 export const [UserProvider, useUser] = createContextHook(() => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const meQuery = trpc.auth.me.useQuery(undefined, {
-    retry: false,
-    refetchOnWindowFocus: false,
-  });
-
   useEffect(() => {
-    if (meQuery.data) {
-      setUser({
-        id: meQuery.data.id,
-        email: meQuery.data.email,
-        name: meQuery.data.name,
-        phone: meQuery.data.phone,
-        avatar: meQuery.data.avatar,
-        role: meQuery.data.role,
-        verified: meQuery.data.verified,
-        blocked: meQuery.data.blocked,
-        createdAt: meQuery.data.createdAt,
-        lastActive: meQuery.data.lastActive,
-        accountTier: meQuery.data.accountTier,
-        hasAgentProfile: meQuery.data.hasAgentProfile,
-      });
+    loadUser();
+  }, []);
+
+  const loadUser = async () => {
+    try {
+      setIsLoading(true);
+      const currentUser = await getCurrentUser();
+      setUser(currentUser);
+    } catch (error) {
+      console.error('Failed to load user:', error);
+      setUser(null);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(meQuery.isLoading);
-  }, [meQuery.data, meQuery.isLoading]);
-
-  const updateProfileMutation = trpc.users.updateProfile.useMutation({
-    onSuccess: () => {
-      meQuery.refetch();
-    },
-  });
-
-  const uploadAvatarMutation = trpc.users.uploadAvatar.useMutation({
-    onSuccess: () => {
-      meQuery.refetch();
-    },
-  });
+  };
 
   const updateProfile = useCallback(
     async (updates: { name?: string; phone?: string }) => {
-      await updateProfileMutation.mutateAsync(updates);
+      const updatedUser = await updateProfileSupabase(updates);
+      setUser(updatedUser);
     },
-    [updateProfileMutation]
+    []
   );
 
   const uploadAvatar = useCallback(
     async (base64Image: string) => {
-      const result = await uploadAvatarMutation.mutateAsync({ base64Image });
-      return result.avatarUrl;
+      const avatarUrl = await uploadAvatarSupabase(base64Image);
+      if (user) {
+        setUser({ ...user, avatar: avatarUrl });
+      }
+      return avatarUrl;
     },
-    [uploadAvatarMutation]
+    [user]
   );
 
   const refetch = useCallback(() => {
-    meQuery.refetch();
-  }, [meQuery]);
+    loadUser();
+  }, []);
 
   const isClient = user?.role === "client";
   const isAgent =
