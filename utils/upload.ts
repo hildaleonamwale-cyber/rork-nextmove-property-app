@@ -1,6 +1,5 @@
 import { Platform } from 'react-native';
-import { API_URL } from './api';
-import { getAuthToken } from './auth';
+import { trpcClient } from '@/lib/trpc';
 
 export interface UploadResponse {
   url: string;
@@ -16,45 +15,53 @@ export class UploadError extends Error {
   }
 }
 
-export async function uploadImage(uri: string): Promise<string> {
-  try {
-    const token = await getAuthToken();
-    
-    const formData = new FormData();
-    
-    const filename = uri.split('/').pop() || 'image.jpg';
-    const match = /\.(\w+)$/.exec(filename);
-    const type = match ? `image/${match[1]}` : 'image/jpeg';
-
-    if (Platform.OS === 'web') {
-      const response = await fetch(uri);
-      const blob = await response.blob();
-      formData.append('file', blob, filename);
-    } else {
-      formData.append('file', {
-        uri,
-        name: filename,
-        type,
-      } as any);
-    }
-
-    const uploadResponse = await fetch(`${API_URL}/api/upload`, {
-      method: 'POST',
-      body: formData,
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
+async function fileToBase64(uri: string): Promise<{ base64Data: string; mimeType: string }> {
+  if (Platform.OS === 'web') {
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        resolve({
+          base64Data: reader.result as string,
+          mimeType: blob.type,
+        });
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
     });
+  } else {
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    const reader = new FileReader();
+    return new Promise((resolve, reject) => {
+      reader.onloadend = () => {
+        resolve({
+          base64Data: reader.result as string,
+          mimeType: blob.type || 'image/jpeg',
+        });
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+}
 
-    if (!uploadResponse.ok) {
-      const errorText = await uploadResponse.text();
-      throw new UploadError(`Upload failed: ${errorText}`);
-    }
-
-    const data: UploadResponse = await uploadResponse.json();
-    console.log('Image uploaded successfully:', data.url);
+export async function uploadImage(
+  uri: string,
+  category: 'avatar' | 'property' | 'banner' | 'document' = 'property'
+): Promise<string> {
+  try {
+    const { base64Data, mimeType } = await fileToBase64(uri);
     
-    return data.url;
+    const result = await trpcClient.uploads.uploadImage.mutate({
+      base64Data,
+      mimeType,
+      category,
+    });
+    
+    console.log('Image uploaded successfully:', result.url);
+    return result.url;
   } catch (error) {
     console.error('Image upload failed:', error);
     throw error instanceof UploadError 
@@ -63,10 +70,25 @@ export async function uploadImage(uri: string): Promise<string> {
   }
 }
 
-export async function uploadMultipleImages(uris: string[]): Promise<string[]> {
+export async function uploadMultipleImages(
+  uris: string[],
+  category: 'avatar' | 'property' | 'banner' | 'document' = 'property'
+): Promise<string[]> {
   try {
-    const uploadPromises = uris.map(uri => uploadImage(uri));
-    return await Promise.all(uploadPromises);
+    const images = await Promise.all(
+      uris.map(async (uri) => {
+        const { base64Data, mimeType } = await fileToBase64(uri);
+        return { base64Data, mimeType };
+      })
+    );
+
+    const result = await trpcClient.uploads.uploadMultiple.mutate({
+      images,
+      category,
+    });
+
+    console.log(`Uploaded ${result.files.length} images successfully`);
+    return result.files.map((f) => f.url);
   } catch (error) {
     console.error('Multiple image upload failed:', error);
     throw new UploadError('Failed to upload one or more images. Please try again.');

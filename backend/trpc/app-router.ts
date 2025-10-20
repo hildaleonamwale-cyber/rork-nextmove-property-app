@@ -25,6 +25,9 @@ import { updatePropertyProcedure } from "./routes/properties/update-property/rou
 import { deletePropertyProcedure } from "./routes/properties/delete-property/route";
 import { incrementViewsProcedure } from "./routes/properties/increment-views/route";
 import { incrementInquiriesProcedure } from "./routes/properties/increment-inquiries/route";
+import { uploadImageProcedure } from "./routes/uploads/upload-image/route";
+import { uploadMultipleProcedure } from "./routes/uploads/upload-multiple/route";
+import { deleteImageProcedure } from "./routes/uploads/delete-image/route";
 
 export const appRouter = createTRPCRouter({
   example: createTRPCRouter({
@@ -64,6 +67,11 @@ export const appRouter = createTRPCRouter({
     delete: deletePropertyProcedure,
     incrementViews: incrementViewsProcedure,
     incrementInquiries: incrementInquiriesProcedure,
+  }),
+  uploads: createTRPCRouter({
+    uploadImage: uploadImageProcedure,
+    uploadMultiple: uploadMultipleProcedure,
+    deleteImage: deleteImageProcedure,
   }),
 });
 
