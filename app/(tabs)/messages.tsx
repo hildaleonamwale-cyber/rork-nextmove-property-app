@@ -10,6 +10,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Search, MessageCircle } from 'lucide-react-native';
 import Colors from '@/constants/colors';
+import { trpc } from '@/lib/trpc';
 import { DesignSystem } from '@/constants/designSystem';
 import UniformHeader from '@/components/UniformHeader';
 
@@ -26,7 +27,9 @@ export default function MessagesScreen() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
 
-  const chats: ChatPreview[] = [
+  const { data: conversationsData } = trpc.messages.listConversations.useQuery();
+
+  const mockChats: ChatPreview[] = [
     {
       id: '1',
       name: 'Property Agent',
@@ -52,6 +55,17 @@ export default function MessagesScreen() {
       online: true,
     },
   ];
+
+  const chats = conversationsData?.conversations.map(conv => ({
+    id: conv.id,
+    name: conv.otherUserName || 'User',
+    lastMessage: conv.lastMessage || '',
+    timestamp: conv.lastMessageTime
+      ? new Date(conv.lastMessageTime).toLocaleDateString()
+      : '',
+    unread: conv.unreadCount || 0,
+    online: false,
+  })) || mockChats;
 
   const filteredChats = chats.filter(chat =>
     chat.name.toLowerCase().includes(searchQuery.toLowerCase())

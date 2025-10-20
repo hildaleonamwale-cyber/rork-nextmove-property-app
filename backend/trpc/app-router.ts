@@ -40,6 +40,9 @@ import { createNotificationProcedure } from "./routes/notifications/create-notif
 import { listNotificationsProcedure } from "./routes/notifications/list-notifications/route";
 import { markAsReadProcedure as markNotificationAsReadProcedure } from "./routes/notifications/mark-as-read/route";
 import { deleteNotificationProcedure } from "./routes/notifications/delete-notification/route";
+import { addToWishlistProcedure } from "./routes/wishlists/add/route";
+import { removeFromWishlistProcedure } from "./routes/wishlists/remove/route";
+import { listWishlistProcedure } from "./routes/wishlists/list/route";
 
 export const appRouter = createTRPCRouter({
   example: createTRPCRouter({
@@ -102,6 +105,11 @@ export const appRouter = createTRPCRouter({
     list: listNotificationsProcedure,
     markAsRead: markNotificationAsReadProcedure,
     delete: deleteNotificationProcedure,
+  }),
+  wishlists: createTRPCRouter({
+    add: addToWishlistProcedure,
+    remove: removeFromWishlistProcedure,
+    list: listWishlistProcedure,
   }),
 });
 

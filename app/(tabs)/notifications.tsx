@@ -10,6 +10,7 @@ import { Bell, MessageCircle, Calendar, Heart, Home } from 'lucide-react-native'
 import Colors from '@/constants/colors';
 import { DesignSystem } from '@/constants/designSystem';
 import UniformHeader from '@/components/UniformHeader';
+import { trpc } from '@/lib/trpc';
 
 interface Notification {
   id: string;
@@ -21,7 +22,19 @@ interface Notification {
 }
 
 export default function NotificationsScreen() {
-  const notifications: Notification[] = [
+  const { data: notificationsData, refetch } = trpc.notifications.list.useQuery();
+  const markAsReadMutation = trpc.notifications.markAsRead.useMutation({
+    onSuccess: () => {
+      refetch();
+    },
+  });
+  const deleteNotificationMutation = trpc.notifications.delete.useMutation({
+    onSuccess: () => {
+      refetch();
+    },
+  });
+
+  const mockNotifications: Notification[] = [
     {
       id: '1',
       type: 'message',
@@ -71,6 +84,23 @@ export default function NotificationsScreen() {
     }
   };
 
+  const notifications = notificationsData?.notifications.map(n => ({
+    id: n.id,
+    type: n.type as 'message' | 'booking' | 'like' | 'property',
+    title: n.title,
+    description: n.message,
+    timestamp: new Date(n.timestamp).toLocaleDateString(),
+    read: n.read,
+  })) || mockNotifications;
+
+  const handleClearAll = () => {
+    notifications.forEach(notification => {
+      if (!notification.read) {
+        deleteNotificationMutation.mutate({ id: notification.id });
+      }
+    });
+  };
+
   const getIconColor = (type: string) => {
     switch (type) {
       case 'message':
@@ -91,7 +121,7 @@ export default function NotificationsScreen() {
       <UniformHeader 
         title="Notifications"
         rightComponent={
-          <TouchableOpacity style={styles.markAllButton}>
+          <TouchableOpacity style={styles.markAllButton} onPress={handleClearAll}>
             <Text style={styles.markAllText}>Clear All</Text>
           </TouchableOpacity>
         }
@@ -106,6 +136,11 @@ export default function NotificationsScreen() {
             <TouchableOpacity
               key={notification.id}
               style={[styles.notificationCard, !notification.read && styles.notificationUnread]}
+              onPress={() => {
+                if (!notification.read) {
+                  markAsReadMutation.mutate({ id: notification.id });
+                }
+              }}
             >
               <View style={[styles.iconContainer, { backgroundColor: `${iconColor}15` }]}>
                 <Icon size={24} color={iconColor} />

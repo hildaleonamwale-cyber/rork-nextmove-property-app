@@ -13,6 +13,7 @@ import SuccessPrompt from '@/components/SuccessPrompt';
 import UniformHeader from '@/components/UniformHeader';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import DateTimePickerModal from '@/components/DateTimePickerModal';
+import { trpc } from '@/lib/trpc';
 
 interface Booking {
   id: string;
@@ -25,6 +26,13 @@ interface Booking {
 
 export default function BookingsScreen() {
   const [selectedTab, setSelectedTab] = useState<'upcoming' | 'past'>('upcoming');
+
+  const { data: bookingsData, refetch } = trpc.bookings.list.useQuery();
+  const updateBookingMutation = trpc.bookings.updateStatus.useMutation({
+    onSuccess: () => {
+      refetch();
+    },
+  });
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [showCancelDialog, setShowCancelDialog] = useState(false);
@@ -34,7 +42,7 @@ export default function BookingsScreen() {
   const [selectedPropertyName, setSelectedPropertyName] = useState('');
   const [rescheduleDate, setRescheduleDate] = useState(new Date());
 
-  const bookings: Booking[] = [
+  const mockBookings: Booking[] = [
     {
       id: '1',
       propertyName: 'Luxury Penthouse',
@@ -60,6 +68,19 @@ export default function BookingsScreen() {
       status: 'cancelled',
     },
   ];
+
+  const bookings = bookingsData?.bookings.map(b => ({
+    id: b.id,
+    propertyName: b.property?.title || 'Property',
+    location: b.property?.location ? JSON.parse(b.property.location as string).city : '',
+    date: new Date(b.date).toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'short',
+      day: 'numeric',
+    }),
+    time: b.time,
+    status: b.status as 'upcoming' | 'completed' | 'cancelled',
+  })) || mockBookings;
 
   const filteredBookings = bookings.filter(booking =>
     selectedTab === 'upcoming' ? booking.status === 'upcoming' : booking.status !== 'upcoming'
@@ -98,10 +119,16 @@ export default function BookingsScreen() {
   }, []);
 
   const handleCancelConfirm = useCallback(() => {
+    if (selectedBookingId) {
+      updateBookingMutation.mutate({
+        id: selectedBookingId,
+        status: 'cancelled',
+      });
+    }
     setShowCancelDialog(false);
     setSuccessMessage(`Successfully Cancelled ${selectedPropertyName}`);
     setShowSuccess(true);
-  }, [selectedPropertyName]);
+  }, [selectedPropertyName, selectedBookingId, updateBookingMutation]);
 
   const getStatusColor = (status: string) => {
     switch (status) {

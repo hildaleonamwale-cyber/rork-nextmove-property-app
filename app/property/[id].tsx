@@ -47,6 +47,7 @@ import { Listing, Property, Stand, CommercialProperty } from '@/types/property';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import SuccessPrompt from '@/components/SuccessPrompt';
 import { useBookings } from '@/contexts/BookingContext';
+import { trpc } from '@/lib/trpc';
 
 const { width } = Dimensions.get('window');
 
@@ -65,8 +66,21 @@ export default function PropertyDetailScreen() {
   const insets = useSafeAreaInsets();
   const { addBooking } = useBookings();
 
+  const { data: propertyData, isLoading } = trpc.properties.get.useQuery(
+    { id: id as string },
+    { enabled: !!id }
+  );
+
+  const incrementViewsMutation = trpc.properties.incrementViews.useMutation();
+
+  React.useEffect(() => {
+    if (propertyData) {
+      incrementViewsMutation.mutate({ id: id as string });
+    }
+  }, [propertyData]);
+
   const allListings: Listing[] = [...mockProperties, ...mockStands, ...mockCommercialProperties];
-  const listing = allListings.find((p) => p.id === id);
+  const listing = propertyData || allListings.find((p) => p.id === id);
   const agent = mockAgents.find((a) => a.id === listing?.agentId);
   const agency = mockAgencies.find((ag) => ag.id === agent?.agencyId);
   

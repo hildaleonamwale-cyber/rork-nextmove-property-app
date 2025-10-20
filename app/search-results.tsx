@@ -17,6 +17,7 @@ import StandCard from '@/components/StandCard';
 import CommercialPropertyCard from '@/components/CommercialPropertyCard';
 import RoomCard from '@/components/RoomCard';
 import { Listing } from '@/types/property';
+import { trpc } from '@/lib/trpc';
 
 export default function SearchResultsScreen() {
   const router = useRouter();
@@ -24,9 +25,16 @@ export default function SearchResultsScreen() {
   const insets = useSafeAreaInsets();
   const [selectedFilter, setSelectedFilter] = useState('All');
 
+  const { data: searchData } = trpc.properties.list.useQuery({
+    limit: 50,
+    city: city as string | undefined,
+  });
+
   const filters = ['All', 'For Rent', 'For Sale', 'Properties', 'Stands', 'Rooms', 'Commercial'];
 
-  const filteredProperties = mockListings.filter((listing: Listing) => {
+  const allProperties = searchData?.properties || mockListings;
+
+  const filteredProperties = allProperties.filter((listing: any) => {
     if (selectedFilter === 'All') return true;
     if (selectedFilter === 'For Rent') return listing.status === 'For Rent';
     if (selectedFilter === 'For Sale') return listing.status === 'For Sale';

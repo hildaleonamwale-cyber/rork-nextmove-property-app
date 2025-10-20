@@ -16,6 +16,7 @@ import { Search, MapPin, Bell, Plus, Star, Clock, Grid3x3 } from 'lucide-react-n
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
 import { mockListings } from '@/mocks/properties';
+import { trpc } from '@/lib/trpc';
 import BannerCarousel from '@/components/BannerCarousel';
 import { useSuperAdmin } from '@/contexts/SuperAdminContext';
 import PropertyCard from '@/components/PropertyCard';
@@ -38,6 +39,22 @@ export default function HomeScreen() {
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   const allCities = useMemo(() => getAllCityNames(), []);
+
+  const { data: propertiesData, isLoading: isLoadingProperties } = trpc.properties.list.useQuery({
+    limit: 20,
+    featured: false,
+  });
+
+  const { data: featuredData, isLoading: isLoadingFeatured } = trpc.properties.list.useQuery({
+    limit: 10,
+    featured: true,
+  });
+
+  const properties = propertiesData?.properties || [];
+  const featuredProperties = featuredData?.properties || [];
+
+  const allProperties = properties.length > 0 ? properties : mockListings;
+  const displayFeatured = featuredProperties.length > 0 ? featuredProperties : mockListings.filter((l: Listing) => l.featured);
 
   const filteredSuggestions = useMemo(() => {
     if (!searchQuery.trim() || searchQuery.length < 2) return [];
@@ -179,7 +196,7 @@ export default function HomeScreen() {
               decelerationRate="fast"
               snapToAlignment="start"
             >
-              {mockListings.filter((listing: Listing) => listing.featured).map((listing: Listing) => (
+              {displayFeatured.map((listing: any) => (
                 <View key={listing.id} style={styles.carouselCardWrapper}>
                   {listing.listingCategory === 'stand' ? (
                     <StandCard
@@ -225,7 +242,7 @@ export default function HomeScreen() {
               onActionPress={() => router.push('/search-results' as any)}
             />
             <View style={styles.listGrid}>
-              {mockListings.slice(0, 4).map((listing: Listing) => (
+              {allProperties.slice(0, 4).map((listing: any) => (
                 listing.listingCategory === 'stand' ? (
                   <StandCard
                     key={listing.id}
@@ -273,7 +290,7 @@ export default function HomeScreen() {
               onActionPress={() => router.push('/search-results' as any)}
             />
             <View style={styles.listGrid}>
-              {mockListings.slice(2, 6).map((listing: Listing) => (
+              {allProperties.slice(2, 6).map((listing: any) => (
                 listing.listingCategory === 'stand' ? (
                   <StandCard
                     key={listing.id}
