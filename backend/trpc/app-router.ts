@@ -18,6 +18,13 @@ import { blockUserProcedure } from "./routes/admin/block-user/route";
 import { unblockUserProcedure } from "./routes/admin/unblock-user/route";
 import { verifyUserProcedure } from "./routes/admin/verify-user/route";
 import { getUserStatsProcedure } from "./routes/admin/get-user-stats/route";
+import { createPropertyProcedure } from "./routes/properties/create-property/route";
+import { getPropertyProcedure } from "./routes/properties/get-property/route";
+import { listPropertiesProcedure } from "./routes/properties/list-properties/route";
+import { updatePropertyProcedure } from "./routes/properties/update-property/route";
+import { deletePropertyProcedure } from "./routes/properties/delete-property/route";
+import { incrementViewsProcedure } from "./routes/properties/increment-views/route";
+import { incrementInquiriesProcedure } from "./routes/properties/increment-inquiries/route";
 
 export const appRouter = createTRPCRouter({
   example: createTRPCRouter({
@@ -48,6 +55,15 @@ export const appRouter = createTRPCRouter({
     unblockUser: unblockUserProcedure,
     verifyUser: verifyUserProcedure,
     getUserStats: getUserStatsProcedure,
+  }),
+  properties: createTRPCRouter({
+    create: createPropertyProcedure,
+    get: getPropertyProcedure,
+    list: listPropertiesProcedure,
+    update: updatePropertyProcedure,
+    delete: deletePropertyProcedure,
+    incrementViews: incrementViewsProcedure,
+    incrementInquiries: incrementInquiriesProcedure,
   }),
 });
 
