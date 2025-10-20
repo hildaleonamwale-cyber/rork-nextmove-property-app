@@ -17,6 +17,7 @@
     "@react-native-community/datetimepicker": "8.4.1",
     "@react-navigation/native": "^7.1.6",
     "@stardazed/streams-text-encoding": "^1.0.2",
+    "@supabase/supabase-js": "^2.76.0",
     "@tanstack/eslint-plugin-query": "^5.91.2",
     "@tanstack/react-query": "^5.90.5",
     "@trpc/client": "^11.6.0",
