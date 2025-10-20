@@ -1,9 +1,9 @@
-import { protectedProcedure } from "../../create-context";
-import { managedProperties, agents } from "../../../db/schema";
+import { protectedProcedure } from "@/backend/trpc/create-context";
+import { managedProperties, agents } from "@/backend/db/schema";
 import { eq } from "drizzle-orm";
 
 export const listManagedPropertiesProcedure = protectedProcedure.query(
-  async ({ ctx }) => {
+  async ({ ctx }: { ctx: any }) => {
     const agent = await ctx.db
       .select()
       .from(agents)
@@ -20,7 +20,7 @@ export const listManagedPropertiesProcedure = protectedProcedure.query(
       .where(eq(managedProperties.agentId, agent.id))
       .all();
 
-    return properties.map((property) => ({
+    return properties.map((property: any) => ({
       ...property,
       images: property.images ? JSON.parse(property.images) : [],
       documents: property.documents ? JSON.parse(property.documents) : [],

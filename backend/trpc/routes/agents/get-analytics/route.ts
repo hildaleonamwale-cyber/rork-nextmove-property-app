@@ -1,8 +1,13 @@
-import { protectedProcedure } from "../../create-context";
-import { agents, properties, bookings } from "../../../db/schema";
+import { protectedProcedure } from "@/backend/trpc/create-context";
+import { agents, properties, bookings } from "@/backend/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 
-export const getAnalyticsProcedure = protectedProcedure.query(async ({ ctx }) => {
+type Context = {
+  db: any;
+  user: { id: string } | null;
+};
+
+export const getAnalyticsProcedure = protectedProcedure.query(async ({ ctx }: { ctx: Context }) => {
   const agent = await ctx.db
     .select()
     .from(agents)
@@ -20,11 +25,11 @@ export const getAnalyticsProcedure = protectedProcedure.query(async ({ ctx }) =>
     .all();
 
   const totalViews = agentProperties.reduce(
-    (sum, prop) => sum + (prop.views || 0),
+    (sum: number, prop: any) => sum + (prop.views || 0),
     0
   );
   const totalInquiries = agentProperties.reduce(
-    (sum, prop) => sum + (prop.inquiries || 0),
+    (sum: number, prop: any) => sum + (prop.inquiries || 0),
     0
   );
 
@@ -43,19 +48,19 @@ export const getAnalyticsProcedure = protectedProcedure.query(async ({ ctx }) =>
   const now = new Date();
   const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const thisMonthViews = agentProperties.reduce((sum, prop) => {
+  const thisMonthViews = agentProperties.reduce((sum: number, prop: any) => {
     return sum + (prop.views || 0);
   }, 0);
 
-  const thisMonthInquiries = agentProperties.reduce((sum, prop) => {
+  const thisMonthInquiries = agentProperties.reduce((sum: number, prop: any) => {
     return sum + (prop.inquiries || 0);
   }, 0);
 
-  const thisMonthBookings = allBookings.filter((booking) => {
+  const thisMonthBookings = allBookings.filter((booking: any) => {
     return new Date(booking.createdAt) >= currentMonthStart;
   }).length;
 
-  const propertyViews = agentProperties.map((prop) => ({
+  const propertyViews = agentProperties.map((prop: any) => ({
     propertyId: prop.id,
     propertyName: prop.title,
     views: prop.views || 0,

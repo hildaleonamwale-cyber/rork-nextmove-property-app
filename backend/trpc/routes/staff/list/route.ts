@@ -1,8 +1,8 @@
-import { protectedProcedure } from "../../create-context";
-import { staff, agents } from "../../../db/schema";
+import { protectedProcedure } from "@/backend/trpc/create-context";
+import { staff, agents } from "@/backend/db/schema";
 import { eq } from "drizzle-orm";
 
-export const listStaffProcedure = protectedProcedure.query(async ({ ctx }) => {
+export const listStaffProcedure = protectedProcedure.query(async ({ ctx }: { ctx: any }) => {
   const agent = await ctx.db
     .select()
     .from(agents)
@@ -19,7 +19,7 @@ export const listStaffProcedure = protectedProcedure.query(async ({ ctx }) => {
     .where(eq(staff.agentId, agent.id))
     .all();
 
-  return staffList.map((member) => ({
+  return staffList.map((member: any) => ({
     ...member,
     permissions: JSON.parse(member.permissions),
   }));

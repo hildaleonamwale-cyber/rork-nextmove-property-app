@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { protectedProcedure } from "../../create-context";
-import { managedProperties, agents } from "../../../db/schema";
+import { protectedProcedure } from "@/backend/trpc/create-context";
+import { managedProperties, agents } from "@/backend/db/schema";
 import { eq, and } from "drizzle-orm";
 
 const deleteManagedPropertySchema = z.object({
@@ -9,7 +9,7 @@ const deleteManagedPropertySchema = z.object({
 
 export const deleteManagedPropertyProcedure = protectedProcedure
   .input(deleteManagedPropertySchema)
-  .mutation(async ({ ctx, input }) => {
+  .mutation(async ({ ctx, input }: { ctx: any; input: z.infer<typeof deleteManagedPropertySchema> }) => {
     const agent = await ctx.db
       .select()
       .from(agents)

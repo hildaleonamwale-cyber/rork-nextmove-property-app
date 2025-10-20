@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { protectedProcedure } from "../../create-context";
-import { staff, agents } from "../../../db/schema";
+import { protectedProcedure } from "@/backend/trpc/create-context";
+import { staff, agents } from "@/backend/db/schema";
 import { eq, and } from "drizzle-orm";
 
 const removeStaffSchema = z.object({
@@ -9,7 +9,7 @@ const removeStaffSchema = z.object({
 
 export const removeStaffProcedure = protectedProcedure
   .input(removeStaffSchema)
-  .mutation(async ({ ctx, input }) => {
+  .mutation(async ({ ctx, input }: { ctx: any; input: z.infer<typeof removeStaffSchema> }) => {
     const agent = await ctx.db
       .select()
       .from(agents)
