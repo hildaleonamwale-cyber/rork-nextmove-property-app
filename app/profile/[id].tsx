@@ -9,6 +9,7 @@ import {
   Dimensions,
   Platform,
   Linking,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
@@ -29,55 +30,58 @@ import {
   Briefcase,
   Languages,
   Calendar,
-  ArrowRight,
-  Sparkles,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
-import { mockAgents, mockAgencies, mockProperties } from '@/mocks/properties';
 import PropertyCard from '@/components/PropertyCard';
-import { useAgentProfile } from '@/contexts/AgentProfileContext';
 import SectionHeader from '@/components/SectionHeader';
+import { trpc } from '@/lib/trpc';
 
 const { width } = Dimensions.get('window');
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { id, type } = useLocalSearchParams<{ id: string; type?: string }>();
+  const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
-  const { profile: agentProfile } = useAgentProfile();
 
   const [isFollowing, setIsFollowing] = useState(false);
 
-  const isAgency = type === 'agency';
-  const agent = mockAgents.find((a) => a.id === id);
-  const agency = mockAgencies.find((ag) => ag.id === id || ag.id === agent?.agencyId);
+  const { data: agentProfile, isLoading: agentLoading, error: agentError } = trpc.agents.getProfile.useQuery(
+    { userId: id! },
+    { enabled: !!id }
+  );
 
-  const profile = isAgency ? agency : agent;
-  const displayAgency = isAgency ? agency : mockAgencies.find((ag) => ag.id === agent?.agencyId);
+  const { data: propertiesData } = trpc.properties.list.useQuery(
+    { agentId: id, limit: 50 },
+    { enabled: !!id }
+  );
 
-  const featuredCards = isAgency && agency?.profileCards ? agency.profileCards : (isAgency ? agentProfile.profileCards : []);
+  const properties = propertiesData?.properties || [];
 
-  const properties = mockProperties.filter((p) => {
-    if (isAgency) {
-      return agency?.staff.some((s) => s.id === p.agentId);
-    }
-    return p.agentId === id;
-  });
-
-  if (!profile) {
+  if (agentLoading) {
     return (
-      <View style={styles.container}>
-        <Text>Profile not found</Text>
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
   }
 
-  const banner = (isAgency ? agency?.banner : agent?.banner) || 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1200';
-  const avatar = isAgency ? agency?.logo : agent?.avatar;
-  const name = isAgency ? agency?.name : agent?.name;
-  const bio = profile.bio || (isAgency ? agency?.description : agent?.title) || '';
-  const followers = isAgency ? agency?.followers : agent?.followers;
+  if (agentError || !agentProfile) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <Text style={styles.errorText}>Profile not found</Text>
+        <TouchableOpacity style={styles.backButtonError} onPress={() => router.back()}>
+          <Text style={styles.backButtonErrorText}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const banner = agentProfile.banner || 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1200';
+  const avatar = agentProfile.userAvatar || agentProfile.companyLogo || 'https://i.pravatar.cc/200';
+  const name = agentProfile.companyName || agentProfile.userName || 'Agent';
+  const bio = agentProfile.bio || '';
+  const followers = agentProfile.followers || 0;
 
   return (
     <View style={styles.container}>
@@ -104,27 +108,17 @@ export default function ProfileScreen() {
           <View style={styles.profileHeader}>
             <View style={styles.nameRow}>
               <Text style={styles.name}>{name}</Text>
-              {isAgency && <Building2 size={24} color={Colors.primary} />}
+              <Building2 size={24} color={Colors.primary} />
             </View>
 
-            {!isAgency && agent?.title && (
-              <Text style={styles.title}>{agent.title}</Text>
-            )}
-
-            {displayAgency && !isAgency && (
-              <TouchableOpacity
-                style={styles.agencyLink}
-                onPress={() => router.push(`/profile/${displayAgency.id}?type=agency`)}
-              >
-                <Building2 size={16} color={Colors.primary} />
-                <Text style={styles.agencyLinkText}>{displayAgency.name}</Text>
-              </TouchableOpacity>
+            {agentProfile.companyName && (
+              <Text style={styles.title}>{agentProfile.package || 'Agent'}</Text>
             )}
 
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
                 <MapPin size={18} color={Colors.primary} />
-                <Text style={styles.statValue}>{properties.length}</Text>
+                <Text style={styles.statValue}>{properties.length || 0}</Text>
                 <Text style={styles.statLabel}>Properties</Text>
               </View>
               <View style={styles.statDivider} />
@@ -153,157 +147,60 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          <View style={styles.bioSection}>
-            <SectionHeader
-              title="About"
-              style={{ paddingHorizontal: 0, marginBottom: 8 }}
-            />
-            <Text style={styles.bioText}>{bio}</Text>
-          </View>
-
-          {isAgency && featuredCards && featuredCards.length > 0 && (
-            <View style={styles.cardsSection}>
+          {bio && (
+            <View style={styles.bioSection}>
               <SectionHeader
-                icon={Sparkles}
-                title="Featured Properties"
-                subtitle="Discover our premium listings"
-                style={{ paddingHorizontal: 0, marginBottom: 12 }}
+                title="About"
+                style={{ paddingHorizontal: 0, marginBottom: 8 }}
               />
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.carouselContent}
-                snapToInterval={width - 60}
-                decelerationRate="fast"
-                pagingEnabled={false}
-                style={{ marginHorizontal: -20 }}
-              >
-                {featuredCards
-                  .sort((a, b) => a.order - b.order)
-                  .map((card, index) => (
-                    <View key={card.id} style={[styles.profileCard, index === 0 && styles.firstCard]}>
-                      <Image source={{ uri: card.image }} style={styles.profileCardImage} />
-                      <View style={styles.profileCardContent}>
-                        <Text style={styles.profileCardTitle} numberOfLines={2}>{card.title}</Text>
-                        {card.description && (
-                          <Text style={styles.profileCardDescription} numberOfLines={2}>
-                            {card.description}
-                          </Text>
-                        )}
-                        <TouchableOpacity
-                          style={styles.profileCardCta}
-                          onPress={() => {
-                            if (card.propertyId) {
-                              router.push({ pathname: '/property/[id]' as any, params: { id: card.propertyId } });
-                            } else if (card.ctaLink) {
-                              Linking.openURL(card.ctaLink);
-                            }
-                          }}
-                          activeOpacity={0.8}
-                        >
-                          <Text style={styles.profileCardCtaText}>{card.ctaText}</Text>
-                          <ArrowRight size={16} color={Colors.white} strokeWidth={2.5} />
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  ))}
-              </ScrollView>
+              <Text style={styles.bioText}>{bio}</Text>
             </View>
           )}
 
-          {!isAgency && agent && (
-            <>
-              {agent.specialties && agent.specialties.length > 0 && (
-                <View style={styles.section}>
-                  <SectionHeader
-                    icon={Briefcase}
-                    title="Specialties"
-                    style={{ paddingHorizontal: 0, marginBottom: 14 }}
-                  />
-                  <View style={styles.tagsList}>
-                    {agent.specialties.map((specialty, index) => (
-                      <View key={index} style={styles.tag}>
-                        <Text style={styles.tagText}>{specialty}</Text>
-                      </View>
-                    ))}
+          {agentProfile.specialties && agentProfile.specialties.length > 0 && (
+            <View style={styles.section}>
+              <SectionHeader
+                icon={Briefcase}
+                title="Specialties"
+                style={{ paddingHorizontal: 0, marginBottom: 14 }}
+              />
+              <View style={styles.tagsList}>
+                {agentProfile.specialties.map((specialty: string, index: number) => (
+                  <View key={index} style={styles.tag}>
+                    <Text style={styles.tagText}>{specialty}</Text>
                   </View>
-                </View>
-              )}
-
-              <View style={styles.infoGrid}>
-                <View style={styles.infoCard}>
-                  <Calendar size={20} color={Colors.primary} />
-                  <Text style={styles.infoValue}>{agent.yearsExperience} years</Text>
-                  <Text style={styles.infoLabel}>Experience</Text>
-                </View>
-                <View style={styles.infoCard}>
-                  <Languages size={20} color={Colors.primary} />
-                  <Text style={styles.infoValue}>{agent.languages.length}</Text>
-                  <Text style={styles.infoLabel}>Languages</Text>
-                </View>
+                ))}
               </View>
-
-              {agent.languages && agent.languages.length > 0 && (
-                <View style={styles.languagesList}>
-                  {agent.languages.map((lang, index) => (
-                    <Text key={index} style={styles.languageText}>
-                      {lang}{index < agent.languages.length - 1 ? ' • ' : ''}
-                    </Text>
-                  ))}
-                </View>
-              )}
-            </>
+            </View>
           )}
 
-          {isAgency && agency && (
-            <>
-              {agency.specialties && agency.specialties.length > 0 && (
-                <View style={styles.section}>
-                  <SectionHeader
-                    icon={Briefcase}
-                    title="Specialties"
-                    style={{ paddingHorizontal: 0, marginBottom: 14 }}
-                  />
-                  <View style={styles.tagsList}>
-                    {agency.specialties.map((specialty, index) => (
-                      <View key={index} style={styles.tag}>
-                        <Text style={styles.tagText}>{specialty}</Text>
-                      </View>
-                    ))}
-                  </View>
+          {agentProfile.yearsExperience || agentProfile.languages?.length > 0 ? (
+            <View style={styles.infoGrid}>
+              {agentProfile.yearsExperience && (
+                <View style={styles.infoCard}>
+                  <Calendar size={20} color={Colors.primary} />
+                  <Text style={styles.infoValue}>{agentProfile.yearsExperience} years</Text>
+                  <Text style={styles.infoLabel}>Experience</Text>
                 </View>
               )}
+              {agentProfile.languages && agentProfile.languages.length > 0 && (
+                <View style={styles.infoCard}>
+                  <Languages size={20} color={Colors.primary} />
+                  <Text style={styles.infoValue}>{agentProfile.languages.length}</Text>
+                  <Text style={styles.infoLabel}>Languages</Text>
+                </View>
+              )}
+            </View>
+          ) : null}
 
-              {agency.founded && (
-                <View style={styles.foundedSection}>
-                  <Calendar size={18} color={Colors.primary} />
-                  <Text style={styles.foundedText}>Founded in {agency.founded}</Text>
-                </View>
-              )}
-
-              {agency.staff && agency.staff.length > 0 && (
-                <View style={styles.section}>
-                  <SectionHeader
-                    icon={Users}
-                    title="Our Team"
-                    style={{ paddingHorizontal: 0, marginBottom: 14 }}
-                  />
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.staffList}>
-                    {agency.staff.map((member) => (
-                      <TouchableOpacity
-                        key={member.id}
-                        style={styles.staffCard}
-                        onPress={() => router.push(`/profile/${member.id}?type=agent`)}
-                      >
-                        <Image source={{ uri: member.avatar }} style={styles.staffAvatar} />
-                        <Text style={styles.staffName}>{member.name}</Text>
-                        <Text style={styles.staffTitle}>{member.title}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </View>
-              )}
-            </>
+          {agentProfile.languages && agentProfile.languages.length > 0 && (
+            <View style={styles.languagesList}>
+              {agentProfile.languages.map((lang: string, index: number) => (
+                <Text key={index} style={styles.languageText}>
+                  {lang}{index < agentProfile.languages.length - 1 ? ' • ' : ''}
+                </Text>
+              ))}
+            </View>
           )}
 
           <View style={styles.contactSection}>
@@ -313,43 +210,43 @@ export default function ProfileScreen() {
               style={{ paddingHorizontal: 0, marginBottom: 12 }}
             />
             <View style={styles.contactList}>
-              {(isAgency ? agency?.email : agent?.email) && (
+              {agentProfile.email && (
                 <TouchableOpacity
                   style={styles.contactItem}
-                  onPress={() => Linking.openURL(`mailto:${isAgency ? agency?.email : agent?.email}`)}
+                  onPress={() => Linking.openURL(`mailto:${agentProfile.email}`)}
                 >
                   <Mail size={20} color={Colors.primary} />
-                  <Text style={styles.contactText}>{isAgency ? agency?.email : agent?.email}</Text>
+                  <Text style={styles.contactText}>{agentProfile.email}</Text>
                 </TouchableOpacity>
               )}
-              {(isAgency ? agency?.phone : agent?.phone) && (
+              {agentProfile.phone && (
                 <TouchableOpacity
                   style={styles.contactItem}
-                  onPress={() => Linking.openURL(`tel:${isAgency ? agency?.phone : agent?.phone}`)}
+                  onPress={() => Linking.openURL(`tel:${agentProfile.phone}`)}
                 >
                   <Phone size={20} color={Colors.primary} />
-                  <Text style={styles.contactText}>{isAgency ? agency?.phone : agent?.phone}</Text>
+                  <Text style={styles.contactText}>{agentProfile.phone}</Text>
                 </TouchableOpacity>
               )}
-              {isAgency && agency?.website && (
+              {agentProfile.website && (
                 <TouchableOpacity
                   style={styles.contactItem}
-                  onPress={() => Linking.openURL(`https://${agency.website}`)}
+                  onPress={() => Linking.openURL(agentProfile.website.startsWith('http') ? agentProfile.website : `https://${agentProfile.website}`)}
                 >
                   <Globe size={20} color={Colors.primary} />
-                  <Text style={styles.contactText}>{agency.website}</Text>
+                  <Text style={styles.contactText}>{agentProfile.website}</Text>
                 </TouchableOpacity>
               )}
-              {isAgency && agency?.address && (
+              {agentProfile.address && (
                 <View style={styles.contactItem}>
                   <MapPin size={20} color={Colors.primary} />
-                  <Text style={styles.contactText}>{agency.address}</Text>
+                  <Text style={styles.contactText}>{agentProfile.address}</Text>
                 </View>
               )}
             </View>
           </View>
 
-          {(profile.socialMedia) && (
+          {agentProfile.socialMedia && Object.values(agentProfile.socialMedia).some((v: any) => v) && (
             <View style={styles.socialSection}>
               <SectionHeader
                 icon={Share2}
@@ -357,34 +254,34 @@ export default function ProfileScreen() {
                 style={{ paddingHorizontal: 0, marginBottom: 12 }}
               />
               <View style={styles.socialButtons}>
-                {profile.socialMedia.linkedin && (
+                {agentProfile.socialMedia.linkedin && (
                   <TouchableOpacity
                     style={styles.socialButton}
-                    onPress={() => Linking.openURL(profile.socialMedia!.linkedin!)}
+                    onPress={() => Linking.openURL(agentProfile.socialMedia.linkedin)}
                   >
                     <Linkedin size={22} color={Colors.white} />
                   </TouchableOpacity>
                 )}
-                {profile.socialMedia.instagram && (
+                {agentProfile.socialMedia.instagram && (
                   <TouchableOpacity
                     style={styles.socialButton}
-                    onPress={() => Linking.openURL(profile.socialMedia!.instagram!)}
+                    onPress={() => Linking.openURL(agentProfile.socialMedia.instagram)}
                   >
                     <Instagram size={22} color={Colors.white} />
                   </TouchableOpacity>
                 )}
-                {profile.socialMedia.twitter && (
+                {agentProfile.socialMedia.twitter && (
                   <TouchableOpacity
                     style={styles.socialButton}
-                    onPress={() => Linking.openURL(profile.socialMedia!.twitter!)}
+                    onPress={() => Linking.openURL(agentProfile.socialMedia.twitter)}
                   >
                     <Twitter size={22} color={Colors.white} />
                   </TouchableOpacity>
                 )}
-                {isAgency && (profile.socialMedia as any).facebook && (
+                {(agentProfile.socialMedia as any).facebook && (
                   <TouchableOpacity
                     style={styles.socialButton}
-                    onPress={() => Linking.openURL((profile.socialMedia as any).facebook)}
+                    onPress={() => Linking.openURL((agentProfile.socialMedia as any).facebook)}
                   >
                     <Facebook size={22} color={Colors.white} />
                   </TouchableOpacity>
@@ -393,25 +290,29 @@ export default function ProfileScreen() {
             </View>
           )}
 
-          <View style={styles.propertiesSection}>
-            <SectionHeader
-              icon={Building2}
-              title="Listed Properties"
-              subtitle={`${properties.length} properties available`}
-              style={{ paddingHorizontal: 0, marginBottom: 20 }}
-            />
-          </View>
+          {properties && properties.length > 0 && (
+            <>
+              <View style={styles.propertiesSection}>
+                <SectionHeader
+                  icon={Building2}
+                  title="Listed Properties"
+                  subtitle={`${properties.length} properties available`}
+                  style={{ paddingHorizontal: 0, marginBottom: 20 }}
+                />
+              </View>
 
-          <View style={styles.propertiesGrid}>
-            {properties.map((property) => (
-              <PropertyCard
-                key={property.id}
-                property={property}
-                variant="grid"
-                onPress={() => router.push(`/property/${property.id}`)}
-              />
-            ))}
-          </View>
+              <View style={styles.propertiesGrid}>
+                {properties.map((property: any) => (
+                  <PropertyCard
+                    key={property.id}
+                    property={property as any}
+                    variant="grid"
+                    onPress={() => router.push(`/property/${property.id}`)}
+                  />
+                ))}
+              </View>
+            </>
+          )}
 
           <View style={{ height: 40 }} />
         </View>
@@ -424,6 +325,26 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.white,
+  },
+  centered: {
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+  },
+  errorText: {
+    fontSize: 16,
+    color: Colors.text.secondary,
+    marginBottom: 16,
+  },
+  backButtonError: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    backgroundColor: Colors.primary,
+    borderRadius: 8,
+  },
+  backButtonErrorText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.white,
   },
   content: {
     flex: 1,

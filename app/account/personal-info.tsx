@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,31 +9,53 @@ import {
   Platform,
   Image,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, User, Mail, Phone, MapPin, Calendar, Camera } from 'lucide-react-native';
+import { ArrowLeft, User, Mail, Phone, Camera } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import Colors from '@/constants/colors';
 import SuccessPrompt from '@/components/SuccessPrompt';
-import DateTimePickerModal from '@/components/DateTimePickerModal';
+import { useUser } from '@/contexts/UserContext';
 
 export default function PersonalInfoScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [name, setName] = useState('John Doe');
-  const [email, setEmail] = useState('john.doe@example.com');
-  const [phone, setPhone] = useState('+1 (555) 123-4567');
-  const [address, setAddress] = useState('123 Main St, New York, NY 10001');
-  const [birthDate, setBirthDate] = useState(new Date(1990, 0, 15));
-  const [profileImage, setProfileImage] = useState<string>('https://i.pravatar.cc/200?img=33');
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  const { user, updateProfile, uploadAvatar, isLoading: userLoading } = useUser();
 
-  const handleSave = useCallback(() => {
-    console.log('Saving personal info:', { name, email, phone, address, birthDate: birthDate.toLocaleDateString() });
-    setShowSuccess(true);
-  }, [name, email, phone, address, birthDate]);
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [profileImage, setProfileImage] = useState<string>('');
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setName(user.name || '');
+      setPhone(user.phone || '');
+      setProfileImage(user.avatar || 'https://i.pravatar.cc/200?img=33');
+    }
+  }, [user]);
+
+  const handleSave = useCallback(async () => {
+    if (!name.trim()) {
+      Alert.alert('Error', 'Name is required');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await updateProfile({ name, phone: phone || undefined });
+      setShowSuccess(true);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      Alert.alert('Error', 'Failed to update profile. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [name, phone, updateProfile]);
 
   const pickImage = async () => {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -52,12 +74,35 @@ export default function PersonalInfoScreen() {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
+      base64: true,
     });
 
     if (!result.canceled && result.assets[0]) {
-      setProfileImage(result.assets[0].uri);
+      const asset = result.assets[0];
+      setProfileImage(asset.uri);
+      
+      if (asset.base64) {
+        setIsUploadingImage(true);
+        try {
+          await uploadAvatar(asset.base64);
+          setShowSuccess(true);
+        } catch (error) {
+          console.error('Error uploading avatar:', error);
+          Alert.alert('Error', 'Failed to upload profile picture. Please try again.');
+        } finally {
+          setIsUploadingImage(false);
+        }
+      }
     }
   };
+
+  if (userLoading) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -108,15 +153,10 @@ export default function PersonalInfoScreen() {
               <View style={styles.inputIcon}>
                 <Mail size={20} color={Colors.text.secondary} />
               </View>
-              <TextInput
-                style={styles.input}
-                value={email}
-                onChangeText={setEmail}
-                placeholder="Enter your email"
-                placeholderTextColor={Colors.text.light}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
+              <View style={[styles.input, styles.disabledInput]}>
+                <Text style={styles.disabledInputText}>{user?.email || 'N/A'}</Text>
+              </View>
+              <Text style={styles.helperText}>Email cannot be changed</Text>
             </View>
           </View>
 
@@ -137,43 +177,19 @@ export default function PersonalInfoScreen() {
             </View>
           </View>
 
-          <View style={styles.inputGroup}>
-            <View style={styles.inputWrapper}>
-              <Text style={styles.inputLabel}>Date of Birth</Text>
-              <View style={styles.inputIcon}>
-                <Calendar size={20} color={Colors.text.secondary} />
-              </View>
-              <TouchableOpacity
-                style={[styles.input, styles.dateInputButton]}
-                onPress={() => setShowDatePicker(true)}
-              >
-                <Text style={styles.dateInputText}>
-                  {birthDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
 
-          <View style={styles.inputGroup}>
-            <View style={styles.inputWrapper}>
-              <Text style={styles.inputLabel}>Address</Text>
-              <View style={styles.inputIcon}>
-                <MapPin size={20} color={Colors.text.secondary} />
-              </View>
-              <TextInput
-                style={[styles.input, { minHeight: 56 }]}
-                value={address}
-                onChangeText={setAddress}
-                placeholder="Enter your address"
-                placeholderTextColor={Colors.text.light}
-                multiline
-              />
-            </View>
-          </View>
         </View>
 
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-          <Text style={styles.saveButtonText}>Save Changes</Text>
+        <TouchableOpacity 
+          style={[styles.saveButton, (isSaving || isUploadingImage) && styles.saveButtonDisabled]} 
+          onPress={handleSave}
+          disabled={isSaving || isUploadingImage}
+        >
+          {isSaving ? (
+            <ActivityIndicator size="small" color={Colors.white} />
+          ) : (
+            <Text style={styles.saveButtonText}>Save Changes</Text>
+          )}
         </TouchableOpacity>
 
         <View style={{ height: 40 }} />
@@ -184,17 +200,6 @@ export default function PersonalInfoScreen() {
         message="Successfully Saved"
         onClose={() => setShowSuccess(false)}
       />
-
-      <DateTimePickerModal
-        visible={showDatePicker}
-        mode="date"
-        value={birthDate}
-        onConfirm={(date) => {
-          setBirthDate(date);
-          setShowDatePicker(false);
-        }}
-        onCancel={() => setShowDatePicker(false)}
-      />
     </View>
   );
 }
@@ -203,6 +208,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
+  },
+  centered: {
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
   },
   header: {
     flexDirection: 'row' as const,
@@ -274,6 +283,23 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500' as const,
     color: Colors.text.secondary,
+  },
+  disabledInput: {
+    backgroundColor: Colors.gray[100],
+    justifyContent: 'center' as const,
+  },
+  disabledInputText: {
+    fontSize: 15,
+    color: Colors.text.secondary,
+  },
+  helperText: {
+    fontSize: 12,
+    color: Colors.text.secondary,
+    marginTop: 4,
+    marginLeft: 48,
+  },
+  saveButtonDisabled: {
+    opacity: 0.6,
   },
   section: {
     backgroundColor: Colors.white,
