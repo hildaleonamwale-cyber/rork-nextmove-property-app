@@ -28,7 +28,7 @@ export default function MessagesScreen() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const { data: conversationsData } = trpc.messages.listConversations.useQuery(undefined, {
-    refetchInterval: 5000,
+    refetchInterval: 5000 as number | false,
     refetchIntervalInBackground: false,
   });
 
