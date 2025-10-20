@@ -22,7 +22,13 @@ interface Notification {
 }
 
 export default function NotificationsScreen() {
-  const { data: notificationsData, refetch } = trpc.notifications.list.useQuery({});
+  const { data: notificationsData, refetch } = trpc.notifications.list.useQuery(
+    {},
+    {
+      refetchInterval: 10000,
+      refetchIntervalInBackground: false,
+    }
+  );
   const markAsReadMutation = trpc.notifications.markAsRead.useMutation({
     onSuccess: () => {
       refetch();
@@ -89,7 +95,7 @@ export default function NotificationsScreen() {
     type: n.type as 'message' | 'booking' | 'like' | 'property',
     title: n.title,
     description: n.message,
-    timestamp: new Date(n.timestamp).toLocaleDateString(),
+    timestamp: new Date(n.createdAt).toLocaleDateString(),
     read: n.read,
   })) || mockNotifications;
 

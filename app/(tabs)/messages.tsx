@@ -27,7 +27,13 @@ export default function MessagesScreen() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
 
-  const { data: conversationsData } = trpc.messages.listConversations.useQuery();
+  const { data: conversationsData } = trpc.messages.listConversations.useQuery(
+    {},
+    {
+      refetchInterval: 5000,
+      refetchIntervalInBackground: false,
+    }
+  );
 
   const mockChats: ChatPreview[] = [
     {

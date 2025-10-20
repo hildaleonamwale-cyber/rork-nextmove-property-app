@@ -3,8 +3,10 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+  FlatList,
   TouchableOpacity,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { Calendar, MapPin, Clock } from 'lucide-react-native';
 import Colors from '@/constants/colors';
@@ -27,7 +29,15 @@ interface Booking {
 export default function BookingsScreen() {
   const [selectedTab, setSelectedTab] = useState<'upcoming' | 'past'>('upcoming');
 
-  const { data: bookingsData, refetch } = trpc.bookings.list.useQuery({});
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const { data: bookingsData, refetch, isFetching } = trpc.bookings.list.useQuery(
+    {},
+    {
+      refetchInterval: 30000,
+      refetchIntervalInBackground: false,
+    }
+  );
   const updateBookingMutation = trpc.bookings.updateStatus.useMutation({
     onSuccess: () => {
       refetch();
@@ -69,7 +79,7 @@ export default function BookingsScreen() {
     },
   ];
 
-  const bookings = bookingsData?.bookings.map(b => ({
+  const bookings = (bookingsData?.bookings || []).map(b => ({
     id: b.id,
     propertyName: b.propertyTitle || 'Property',
     location: '',
@@ -80,11 +90,19 @@ export default function BookingsScreen() {
     }),
     time: b.time,
     status: b.status as 'upcoming' | 'completed' | 'cancelled',
-  })) || mockBookings;
+  }));
 
-  const filteredBookings = bookings.filter(booking =>
+  const displayBookings = bookings.length > 0 ? bookings : mockBookings;
+
+  const filteredBookings = displayBookings.filter(booking =>
     selectedTab === 'upcoming' ? booking.status === 'upcoming' : booking.status !== 'upcoming'
   );
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    await refetch();
+    setIsRefreshing(false);
+  }, [refetch]);
 
   const handleReschedule = useCallback((bookingId: string, propertyName: string) => {
     setSelectedBookingId(bookingId);
@@ -170,9 +188,11 @@ export default function BookingsScreen() {
         </View>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {filteredBookings.length > 0 ? (
-          filteredBookings.map((booking) => (
+      <FlatList
+        style={styles.content}
+        data={filteredBookings}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item: booking }) => (
             <View key={booking.id} style={styles.bookingCard}>
               <View style={styles.bookingHeader}>
                 <Text style={styles.propertyName}>{booking.propertyName}</Text>
@@ -215,8 +235,8 @@ export default function BookingsScreen() {
                 </View>
               )}
             </View>
-          ))
-        ) : (
+        )}
+        ListEmptyComponent={
           <View style={styles.emptyState}>
             <Calendar size={64} color={Colors.gray[300]} />
             <Text style={styles.emptyText}>No bookings found</Text>
@@ -230,9 +250,17 @@ export default function BookingsScreen() {
               <Text style={styles.bookTourText}>Book a Tour</Text>
             </TouchableOpacity>
           </View>
-        )}
-        <View style={{ height: 20 }} />
-      </ScrollView>
+        }
+        ListFooterComponent={<View style={{ height: 20 }} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            tintColor={Colors.primary}
+          />
+        }
+        showsVerticalScrollIndicator={false}
+      />
 
       <SuccessPrompt
         visible={showSuccess}
@@ -428,5 +456,10 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600' as const,
     color: Colors.white,
+  },
+  loadingFooter: {
+    paddingVertical: 20,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
 });

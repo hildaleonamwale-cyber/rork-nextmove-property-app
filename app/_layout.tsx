@@ -3,6 +3,7 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { View } from "react-native";
 import { UserModeProvider } from "@/contexts/UserModeContext";
 import { AgentProfileProvider } from "@/contexts/AgentProfileContext";
 import { SuperAdminProvider } from "@/contexts/SuperAdminContext";
@@ -10,6 +11,8 @@ import { BookingProvider } from "@/contexts/BookingContext";
 import { UserProvider } from "@/contexts/UserContext";
 import { AgentProvider } from "@/contexts/AgentContext";
 import { trpc, trpcClient } from "@/lib/trpc";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import OfflineNotice from "@/components/OfflineNotice";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -55,24 +58,29 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <trpc.Provider client={trpcClient} queryClient={queryClient}>
-      <QueryClientProvider client={queryClient}>
-        <UserProvider>
-          <AgentProvider>
-            <SuperAdminProvider>
-              <UserModeProvider>
-                <AgentProfileProvider>
-                  <BookingProvider>
-                    <GestureHandlerRootView style={{ flex: 1 }}>
-                      <RootLayoutNav />
-                    </GestureHandlerRootView>
-                  </BookingProvider>
-                </AgentProfileProvider>
-              </UserModeProvider>
-            </SuperAdminProvider>
-          </AgentProvider>
-        </UserProvider>
-      </QueryClientProvider>
-    </trpc.Provider>
+    <ErrorBoundary>
+      <trpc.Provider client={trpcClient} queryClient={queryClient}>
+        <QueryClientProvider client={queryClient}>
+          <UserProvider>
+            <AgentProvider>
+              <SuperAdminProvider>
+                <UserModeProvider>
+                  <AgentProfileProvider>
+                    <BookingProvider>
+                      <GestureHandlerRootView style={{ flex: 1 }}>
+                        <View style={{ flex: 1 }}>
+                          <OfflineNotice />
+                          <RootLayoutNav />
+                        </View>
+                      </GestureHandlerRootView>
+                    </BookingProvider>
+                  </AgentProfileProvider>
+                </UserModeProvider>
+              </SuperAdminProvider>
+            </AgentProvider>
+          </UserProvider>
+        </QueryClientProvider>
+      </trpc.Provider>
+    </ErrorBoundary>
   );
 }

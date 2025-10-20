@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import OptimizedImage, { blurhash } from './OptimizedImage';
 import { Bed, Bath, MapPin, Heart } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { DesignSystem } from '@/constants/designSystem';
@@ -33,7 +34,7 @@ export default function PropertyCard({ property, onPress, variant = 'default' }:
       activeOpacity={0.9}
     >
       <View style={[styles.imageContainer, isGrid && styles.gridImageContainer, isCarousel && styles.carouselImageContainer]}>
-        <Image source={{ uri: property.images[0] }} style={styles.image} />
+        <OptimizedImage source={{ uri: property.images[0] }} style={styles.image} placeholder={blurhash} />
         <View style={styles.badgeRow}>
           <View style={styles.typeBadge}>
             <Text style={styles.typeBadgeText}>{property.propertyType ? property.propertyType.charAt(0).toUpperCase() + property.propertyType.slice(1) : 'Property'}</Text>
@@ -41,7 +42,7 @@ export default function PropertyCard({ property, onPress, variant = 'default' }:
           {property.lister && (
             <View style={styles.listerBadgeContainer}>
               {property.lister.type === 'company' && property.lister.companyLogo ? (
-                <Image source={{ uri: property.lister.companyLogo }} style={styles.listerBadge} />
+                <OptimizedImage source={{ uri: property.lister.companyLogo }} style={styles.listerBadge} />
               ) : (
                 <View style={styles.privateBadge}>
                   <Text style={styles.privateBadgeText}>P</Text>
