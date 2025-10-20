@@ -57,11 +57,11 @@ export default function MessagesScreen() {
   ];
 
   const chats = conversationsData?.conversations.map(conv => ({
-    id: conv.id,
-    name: conv.otherUserName || 'User',
+    id: conv.userId,
+    name: conv.userName || 'User',
     lastMessage: conv.lastMessage || '',
-    timestamp: conv.lastMessageTime
-      ? new Date(conv.lastMessageTime).toLocaleDateString()
+    timestamp: conv.timestamp
+      ? new Date(conv.timestamp).toLocaleDateString()
       : '',
     unread: conv.unreadCount || 0,
     online: false,

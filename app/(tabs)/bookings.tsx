@@ -27,7 +27,7 @@ interface Booking {
 export default function BookingsScreen() {
   const [selectedTab, setSelectedTab] = useState<'upcoming' | 'past'>('upcoming');
 
-  const { data: bookingsData, refetch } = trpc.bookings.list.useQuery();
+  const { data: bookingsData, refetch } = trpc.bookings.list.useQuery({});
   const updateBookingMutation = trpc.bookings.updateStatus.useMutation({
     onSuccess: () => {
       refetch();
@@ -71,8 +71,8 @@ export default function BookingsScreen() {
 
   const bookings = bookingsData?.bookings.map(b => ({
     id: b.id,
-    propertyName: b.property?.title || 'Property',
-    location: b.property?.location ? JSON.parse(b.property.location as string).city : '',
+    propertyName: b.propertyTitle || 'Property',
+    location: '',
     date: new Date(b.date).toLocaleDateString('en-US', {
       weekday: 'long',
       month: 'short',
@@ -121,7 +121,7 @@ export default function BookingsScreen() {
   const handleCancelConfirm = useCallback(() => {
     if (selectedBookingId) {
       updateBookingMutation.mutate({
-        id: selectedBookingId,
+        bookingId: selectedBookingId,
         status: 'cancelled',
       });
     }

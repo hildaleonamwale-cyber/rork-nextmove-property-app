@@ -22,7 +22,7 @@ interface Notification {
 }
 
 export default function NotificationsScreen() {
-  const { data: notificationsData, refetch } = trpc.notifications.list.useQuery();
+  const { data: notificationsData, refetch } = trpc.notifications.list.useQuery({});
   const markAsReadMutation = trpc.notifications.markAsRead.useMutation({
     onSuccess: () => {
       refetch();
@@ -96,7 +96,7 @@ export default function NotificationsScreen() {
   const handleClearAll = () => {
     notifications.forEach(notification => {
       if (!notification.read) {
-        deleteNotificationMutation.mutate({ id: notification.id });
+        deleteNotificationMutation.mutate({ notificationId: notification.id });
       }
     });
   };
@@ -138,7 +138,7 @@ export default function NotificationsScreen() {
               style={[styles.notificationCard, !notification.read && styles.notificationUnread]}
               onPress={() => {
                 if (!notification.read) {
-                  markAsReadMutation.mutate({ id: notification.id });
+                  markAsReadMutation.mutate({ notificationId: notification.id });
                 }
               }}
             >

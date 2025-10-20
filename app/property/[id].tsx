@@ -283,7 +283,7 @@ export default function PropertyDetailScreen() {
                 showsHorizontalScrollIndicator={false} 
                 contentContainerStyle={styles.thumbnailsContent}
               >
-                {listing.images.map((image, index) => (
+                {listing.images.map((image: string, index: number) => (
                   <TouchableOpacity
                     key={index}
                     onPress={() => setSelectedImageIndex(index)}

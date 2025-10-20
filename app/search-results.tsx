@@ -27,7 +27,7 @@ export default function SearchResultsScreen() {
 
   const { data: searchData } = trpc.properties.list.useQuery({
     limit: 50,
-    city: city as string | undefined,
+    location: city as string | undefined,
   });
 
   const filters = ['All', 'For Rent', 'For Sale', 'Properties', 'Stands', 'Rooms', 'Commercial'];
