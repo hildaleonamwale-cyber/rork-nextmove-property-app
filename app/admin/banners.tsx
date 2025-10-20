@@ -22,23 +22,27 @@ import {
   EyeOff,
   ExternalLink,
 } from 'lucide-react-native';
-import { useSuperAdmin } from '@/contexts/SuperAdminContext';
-import type { HomepageBanner } from '@/contexts/SuperAdminContext';
+import { trpc } from '@/lib/trpc';
 import Colors from '@/constants/colors';
 
 export default function BannerManagement() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { banners, updateBanner, addBanner, deleteBanner } = useSuperAdmin();
+  const { data: banners = [], isLoading } = trpc.admin.banners.list.useQuery();
+  const updateBannerMutation = trpc.admin.banners.update.useMutation();
+  const createBannerMutation = trpc.admin.banners.create.useMutation();
+  const deleteBannerMutation = trpc.admin.banners.delete.useMutation();
+  const utils = trpc.useUtils();
+  
   const [editModalVisible, setEditModalVisible] = useState(false);
-  const [selectedBanner, setSelectedBanner] = useState<HomepageBanner | null>(null);
+  const [selectedBanner, setSelectedBanner] = useState<typeof banners[0] | null>(null);
   const [formData, setFormData] = useState({
     imageUrl: '',
     title: '',
     link: '',
   });
 
-  const handleEdit = (banner: HomepageBanner) => {
+  const handleEdit = (banner: typeof banners[0]) => {
     setSelectedBanner(banner);
     setFormData({
       imageUrl: banner.imageUrl,
@@ -64,18 +68,27 @@ export default function BannerManagement() {
       return;
     }
 
-    if (selectedBanner) {
-      await updateBanner(selectedBanner.id, formData);
-    } else {
-      await addBanner({
-        ...formData,
-        enabled: true,
-        order: banners.length + 1,
-      });
-    }
+    try {
+      if (selectedBanner) {
+        await updateBannerMutation.mutateAsync({
+          id: selectedBanner.id,
+          ...formData,
+        });
+      } else {
+        await createBannerMutation.mutateAsync({
+          ...formData,
+          enabled: true,
+          order: banners.length + 1,
+        });
+      }
 
-    setEditModalVisible(false);
-    setSelectedBanner(null);
+      await utils.admin.banners.list.invalidate();
+      setEditModalVisible(false);
+      setSelectedBanner(null);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to save banner');
+      console.error('Failed to save banner:', error);
+    }
   };
 
   const handleDelete = (bannerId: string) => {
@@ -87,14 +100,31 @@ export default function BannerManagement() {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: () => deleteBanner(bannerId),
+          onPress: async () => {
+            try {
+              await deleteBannerMutation.mutateAsync({ id: bannerId });
+              await utils.admin.banners.list.invalidate();
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete banner');
+              console.error('Failed to delete banner:', error);
+            }
+          },
         },
       ]
     );
   };
 
-  const handleToggleEnabled = async (banner: HomepageBanner) => {
-    await updateBanner(banner.id, { enabled: !banner.enabled });
+  const handleToggleEnabled = async (banner: typeof banners[0]) => {
+    try {
+      await updateBannerMutation.mutateAsync({
+        id: banner.id,
+        enabled: !banner.enabled,
+      });
+      await utils.admin.banners.list.invalidate();
+    } catch (error) {
+      Alert.alert('Error', 'Failed to toggle banner');
+      console.error('Failed to toggle banner:', error);
+    }
   };
 
   return (
@@ -116,6 +146,11 @@ export default function BannerManagement() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Loading banners...</Text>
+          </View>
+        ) : (
         <View style={styles.section}>
           {banners.map((banner) => (
             <View key={banner.id} style={styles.bannerCard}>
@@ -160,6 +195,7 @@ export default function BannerManagement() {
             </View>
           ))}
         </View>
+        )}
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -470,5 +506,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700' as const,
     color: Colors.white,
+  },
+  loadingContainer: {
+    paddingVertical: 60,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontWeight: '500' as const,
+    color: Colors.text.secondary,
   },
 });

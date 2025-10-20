@@ -12,14 +12,17 @@ import {
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Shield, ShieldOff, Trash2, TrendingUp, Search, X } from 'lucide-react-native';
-import { useSuperAdmin } from '@/contexts/SuperAdminContext';
-import type { AccountTier } from '@/contexts/SuperAdminContext';
+import { trpc } from '@/lib/trpc';
 import Colors from '@/constants/colors';
 
 export default function UserManagement() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { users, blockUser, unblockUser, upgradeUserTier, deleteUser } = useSuperAdmin();
+  const { data: users = [], isLoading } = trpc.admin.listUsers.useQuery({});
+  const blockUserMutation = trpc.admin.blockUser.useMutation();
+  const unblockUserMutation = trpc.admin.unblockUser.useMutation();
+  const updateRoleMutation = trpc.admin.updateUserRole.useMutation();
+  const utils = trpc.useUtils();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRole, setSelectedRole] = useState<'all' | string>('all');
   const [selectedTier, setSelectedTier] = useState<'all' | string>('all');
@@ -57,16 +60,28 @@ export default function UserManagement() {
     });
   }, [users, searchQuery, selectedRole, selectedTier, showBlocked]);
 
-  const handleBlock = (userId: string, blocked: boolean) => {
+  const handleBlock = (userId: string, isBlocked: boolean) => {
     Alert.alert(
-      blocked ? 'Unblock User' : 'Block User',
-      `Are you sure you want to ${blocked ? 'unblock' : 'block'} this user?`,
+      isBlocked ? 'Unblock User' : 'Block User',
+      `Are you sure you want to ${isBlocked ? 'unblock' : 'block'} this user?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: blocked ? 'Unblock' : 'Block',
-          style: blocked ? 'default' : 'destructive',
-          onPress: () => blocked ? unblockUser(userId) : blockUser(userId),
+          text: isBlocked ? 'Unblock' : 'Block',
+          style: isBlocked ? 'default' : 'destructive',
+          onPress: async () => {
+            try {
+              if (isBlocked) {
+                await unblockUserMutation.mutateAsync({ userId });
+              } else {
+                await blockUserMutation.mutateAsync({ userId });
+              }
+              await utils.admin.listUsers.invalidate();
+            } catch (error) {
+              Alert.alert('Error', `Failed to ${isBlocked ? 'unblock' : 'block'} user`);
+              console.error('Failed to block/unblock user:', error);
+            }
+          },
         },
       ]
     );
@@ -75,26 +90,29 @@ export default function UserManagement() {
   const handleDelete = (userId: string, userName: string) => {
     Alert.alert(
       'Delete User',
-      `Are you sure you want to delete ${userName}? This action cannot be undone.`,
+      `Are you sure you want to delete ${userName}? This feature is not available yet.`,
       [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => deleteUser(userId),
-        },
+        { text: 'OK', style: 'cancel' },
       ]
     );
   };
 
-  const handleUpgrade = (userId: string, currentTier: AccountTier) => {
-    const tiers: AccountTier[] = ['free', 'pro', 'agency'];
-    const options = tiers.map((tier) => ({
-      text: `${tier} ${currentTier === tier ? '(current)' : ''}`,
-      onPress: () => upgradeUserTier(userId, tier),
+  const handleUpgrade = (userId: string, currentRole: string) => {
+    const roles = ['client', 'agent', 'agency', 'super_admin'];
+    const options = roles.map((role) => ({
+      text: `${role} ${currentRole === role ? '(current)' : ''}`,
+      onPress: async () => {
+        try {
+          await updateRoleMutation.mutateAsync({ userId, role: role as any });
+          await utils.admin.listUsers.invalidate();
+        } catch (error) {
+          Alert.alert('Error', 'Failed to update user role');
+          console.error('Failed to update user role:', error);
+        }
+      },
     }));
     options.push({ text: 'Cancel', onPress: async () => {} });
-    Alert.alert('Change Account Tier', 'Select new tier:', options);
+    Alert.alert('Change User Role', 'Select new role:', options);
   };
 
   const getRoleBadgeColor = (role: string) => {
@@ -222,6 +240,11 @@ export default function UserManagement() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Loading users...</Text>
+          </View>
+        ) : (
         <View style={styles.section}>
           {filteredUsers.length === 0 ? (
             <View style={styles.emptyState}>
@@ -250,11 +273,13 @@ export default function UserManagement() {
                           {user.role}
                         </Text>
                       </View>
-                      <View style={[styles.badge, { backgroundColor: `${getTierBadgeColor(user.accountTier)}20` }]}>
-                        <Text style={[styles.badgeText, { color: getTierBadgeColor(user.accountTier) }]}>
-                          {user.accountTier}
-                        </Text>
-                      </View>
+                      {user.accountTier && (
+                        <View style={[styles.badge, { backgroundColor: `${getTierBadgeColor(user.accountTier)}20` }]}>
+                          <Text style={[styles.badgeText, { color: getTierBadgeColor(user.accountTier) }]}>
+                            {user.accountTier}
+                          </Text>
+                        </View>
+                      )}
                       {user.blocked && (
                         <View style={[styles.badge, { backgroundColor: '#EF444420' }]}>
                           <Text style={[styles.badgeText, { color: '#EF4444' }]}>Blocked</Text>
@@ -267,23 +292,23 @@ export default function UserManagement() {
 
               <View style={styles.userStats}>
                 <View style={styles.stat}>
-                  <Text style={styles.statValue}>{user.propertiesCount}</Text>
+                  <Text style={styles.statValue}>{user.propertiesCount || 0}</Text>
                   <Text style={styles.statLabel}>Properties</Text>
                 </View>
                 <View style={styles.stat}>
-                  <Text style={styles.statValue}>{user.bookingsCount}</Text>
+                  <Text style={styles.statValue}>{user.bookingsCount || 0}</Text>
                   <Text style={styles.statLabel}>Bookings</Text>
                 </View>
                 <View style={styles.stat}>
-                  <Text style={styles.statValue}>{new Date(user.lastActive).toLocaleDateString()}</Text>
-                  <Text style={styles.statLabel}>Last Active</Text>
+                  <Text style={styles.statValue}>{new Date(user.createdAt).toLocaleDateString()}</Text>
+                  <Text style={styles.statLabel}>Joined</Text>
                 </View>
               </View>
 
               <View style={styles.userActions}>
                 <TouchableOpacity
                   style={[styles.actionBtn, styles.actionBtnPrimary]}
-                  onPress={() => handleUpgrade(user.id, user.accountTier)}
+                  onPress={() => handleUpgrade(user.id, user.role)}
                 >
                   <TrendingUp size={18} color={Colors.white} />
                 </TouchableOpacity>
@@ -308,6 +333,7 @@ export default function UserManagement() {
           ))
           )}
         </View>
+        )}
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -547,5 +573,15 @@ const styles = StyleSheet.create({
     fontWeight: '400' as const,
     color: Colors.text.secondary,
     textAlign: 'center' as const,
+  },
+  loadingContainer: {
+    paddingVertical: 60,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontWeight: '500' as const,
+    color: Colors.text.secondary,
   },
 });
