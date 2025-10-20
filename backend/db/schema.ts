@@ -322,3 +322,5 @@ export const managedProperties = sqliteTable(
     agentIdIdx: index("managed_properties_agent_id_idx").on(table.agentId),
   })
 );
+
+export const agentProfiles = agents;
