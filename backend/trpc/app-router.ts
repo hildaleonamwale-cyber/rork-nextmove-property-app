@@ -28,6 +28,18 @@ import { incrementInquiriesProcedure } from "./routes/properties/increment-inqui
 import { uploadImageProcedure } from "./routes/uploads/upload-image/route";
 import { uploadMultipleProcedure } from "./routes/uploads/upload-multiple/route";
 import { deleteImageProcedure } from "./routes/uploads/delete-image/route";
+import { createBookingProcedure } from "./routes/bookings/create-booking/route";
+import { listBookingsProcedure } from "./routes/bookings/list-bookings/route";
+import { updateBookingStatusProcedure } from "./routes/bookings/update-booking-status/route";
+import { getBookingProcedure } from "./routes/bookings/get-booking/route";
+import { sendMessageProcedure } from "./routes/messages/send-message/route";
+import { getConversationProcedure } from "./routes/messages/get-conversation/route";
+import { listConversationsProcedure } from "./routes/messages/list-conversations/route";
+import { markAsReadProcedure as markMessageAsReadProcedure } from "./routes/messages/mark-as-read/route";
+import { createNotificationProcedure } from "./routes/notifications/create-notification/route";
+import { listNotificationsProcedure } from "./routes/notifications/list-notifications/route";
+import { markAsReadProcedure as markNotificationAsReadProcedure } from "./routes/notifications/mark-as-read/route";
+import { deleteNotificationProcedure } from "./routes/notifications/delete-notification/route";
 
 export const appRouter = createTRPCRouter({
   example: createTRPCRouter({
@@ -72,6 +84,24 @@ export const appRouter = createTRPCRouter({
     uploadImage: uploadImageProcedure,
     uploadMultiple: uploadMultipleProcedure,
     deleteImage: deleteImageProcedure,
+  }),
+  bookings: createTRPCRouter({
+    create: createBookingProcedure,
+    list: listBookingsProcedure,
+    updateStatus: updateBookingStatusProcedure,
+    get: getBookingProcedure,
+  }),
+  messages: createTRPCRouter({
+    send: sendMessageProcedure,
+    getConversation: getConversationProcedure,
+    listConversations: listConversationsProcedure,
+    markAsRead: markMessageAsReadProcedure,
+  }),
+  notifications: createTRPCRouter({
+    create: createNotificationProcedure,
+    list: listNotificationsProcedure,
+    markAsRead: markNotificationAsReadProcedure,
+    delete: deleteNotificationProcedure,
   }),
 });
 
