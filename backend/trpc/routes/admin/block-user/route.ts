@@ -1,10 +1,10 @@
 import { adminProcedure } from "@/backend/trpc/create-context";
 import { db } from "@/backend/db";
-import { users, auditLogs } from "@/backend/db/schema";
+import { users } from "@/backend/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { randomUUID } from "crypto";
+
 
 export const blockUserProcedure = adminProcedure
   .input(
@@ -41,17 +41,6 @@ export const blockUserProcedure = adminProcedure
         updatedAt: new Date(),
       })
       .where(eq(users.id, input.userId));
-
-    await db.insert(auditLogs).values({
-      id: randomUUID(),
-      adminId: ctx.user.id,
-      adminName: ctx.user.name,
-      action: "block_user",
-      targetType: "user",
-      targetId: input.userId,
-      details: `Blocked user ${user.name} (${user.email})`,
-      metadata: JSON.stringify({ reason: input.reason }),
-    });
 
     return { success: true };
   });

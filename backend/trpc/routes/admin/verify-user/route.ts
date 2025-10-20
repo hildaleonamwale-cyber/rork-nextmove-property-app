@@ -1,10 +1,10 @@
 import { adminProcedure } from "@/backend/trpc/create-context";
 import { db } from "@/backend/db";
-import { users, auditLogs } from "@/backend/db/schema";
+import { users } from "@/backend/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { randomUUID } from "crypto";
+
 
 export const verifyUserProcedure = adminProcedure
   .input(
@@ -34,16 +34,6 @@ export const verifyUserProcedure = adminProcedure
         updatedAt: new Date(),
       })
       .where(eq(users.id, input.userId));
-
-    await db.insert(auditLogs).values({
-      id: randomUUID(),
-      adminId: ctx.user.id,
-      adminName: ctx.user.name,
-      action: input.verified ? "verify_user" : "unverify_user",
-      targetType: "user",
-      targetId: input.userId,
-      details: `${input.verified ? "Verified" : "Unverified"} user ${user.name} (${user.email})`,
-    });
 
     return { success: true };
   });
