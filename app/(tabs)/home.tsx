@@ -16,7 +16,7 @@ import { Search, MapPin, Bell, Plus, Star, Clock, Grid3x3 } from 'lucide-react-n
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
 import { mockListings } from '@/mocks/properties';
-import { trpc } from '@/lib/trpc';
+import { useSupabaseProperties } from '@/hooks/useSupabaseProperties';
 import BannerCarousel from '@/components/BannerCarousel';
 import { useSuperAdmin } from '@/contexts/SuperAdminContext';
 import PropertyCard from '@/components/PropertyCard';
@@ -40,18 +40,15 @@ export default function HomeScreen() {
 
   const allCities = useMemo(() => getAllCityNames(), []);
 
-  const { data: propertiesData, isLoading: isLoadingProperties } = trpc.properties.list.useQuery({
+  const { properties, isLoading: isLoadingProperties } = useSupabaseProperties({
     limit: 20,
     featured: false,
   });
 
-  const { data: featuredData, isLoading: isLoadingFeatured } = trpc.properties.list.useQuery({
+  const { properties: featuredProperties, isLoading: isLoadingFeatured } = useSupabaseProperties({
     limit: 10,
     featured: true,
   });
-
-  const properties = propertiesData?.properties || [];
-  const featuredProperties = featuredData?.properties || [];
 
   const allProperties = properties.length > 0 ? properties : mockListings;
   const displayFeatured = featuredProperties.length > 0 ? featuredProperties : mockListings.filter((l: Listing) => l.featured);
