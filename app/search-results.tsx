@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -16,34 +16,72 @@ import PropertyCard from '@/components/PropertyCard';
 import StandCard from '@/components/StandCard';
 import CommercialPropertyCard from '@/components/CommercialPropertyCard';
 import RoomCard from '@/components/RoomCard';
-import { Listing } from '@/types/property';
+import { Listing, ListingCategory } from '@/types/property';
 import { trpc } from '@/lib/trpc';
 
 export default function SearchResultsScreen() {
   const router = useRouter();
-  const { query, city } = useLocalSearchParams();
+  const params = useLocalSearchParams();
   const insets = useSafeAreaInsets();
   const [selectedFilter, setSelectedFilter] = useState('All');
 
-  const { data: searchData } = trpc.properties.list.useQuery({
-    limit: 50,
-    location: city as string | undefined,
-  });
+  const searchParams = useMemo(() => {
+    const query: any = {
+      limit: 50,
+    };
+
+    if (params.listingCategory) {
+      query.listingCategory = params.listingCategory as ListingCategory;
+    }
+
+    if (params.transactionType) {
+      const status = params.transactionType === 'rent' ? 'For Rent' : 'For Sale';
+      query.status = [status];
+    }
+
+    if (params.priceMin) {
+      query.priceMin = Number(params.priceMin);
+    }
+
+    if (params.priceMax) {
+      query.priceMax = Number(params.priceMax);
+    }
+
+    if (params.bedrooms) {
+      query.bedrooms = Number(params.bedrooms);
+    }
+
+    if (params.bathrooms) {
+      query.bathrooms = Number(params.bathrooms);
+    }
+
+    if (params.city || params.province) {
+      query.location = params.city || params.province;
+    }
+
+    return query;
+  }, [params]);
+
+  const { data: searchData, isLoading } = trpc.properties.list.useQuery(searchParams);
 
   const filters = ['All', 'For Rent', 'For Sale', 'Properties', 'Stands', 'Rooms', 'Commercial'];
 
-  const allProperties = searchData?.properties || mockListings;
+  const allProperties = searchData?.properties || [];
 
-  const filteredProperties = allProperties.filter((listing: any) => {
-    if (selectedFilter === 'All') return true;
-    if (selectedFilter === 'For Rent') return listing.status === 'For Rent';
-    if (selectedFilter === 'For Sale') return listing.status === 'For Sale';
-    if (selectedFilter === 'Properties') return listing.listingCategory === 'property';
-    if (selectedFilter === 'Stands') return listing.listingCategory === 'stand';
-    if (selectedFilter === 'Rooms') return listing.listingCategory === 'room';
-    if (selectedFilter === 'Commercial') return listing.listingCategory === 'commercial';
-    return true;
-  });
+  const filteredProperties = useMemo(() => {
+    return allProperties.filter((listing: any) => {
+      if (selectedFilter === 'All') return true;
+      if (selectedFilter === 'For Rent') return listing.status === 'For Rent';
+      if (selectedFilter === 'For Sale') return listing.status === 'For Sale';
+      if (selectedFilter === 'Properties') return listing.listingCategory === 'property';
+      if (selectedFilter === 'Stands') return listing.listingCategory === 'stand';
+      if (selectedFilter === 'Rooms') return listing.listingCategory === 'room';
+      if (selectedFilter === 'Commercial') return listing.listingCategory === 'commercial';
+      return true;
+    });
+  }, [allProperties, selectedFilter]);
+
+  const locationLabel = params.city || params.province || params.query || 'All Locations';
 
   return (
     <View style={styles.container}>
@@ -54,10 +92,10 @@ export default function SearchResultsScreen() {
           </TouchableOpacity>
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>Search Results</Text>
-            {city && (
+            {locationLabel && (
               <View style={styles.locationRow}>
                 <MapPin size={14} color={Colors.text.secondary} strokeWidth={2} />
-                <Text style={styles.locationText}>{city as string}</Text>
+                <Text style={styles.locationText}>{locationLabel as string}</Text>
               </View>
             )}
           </View>
@@ -96,7 +134,7 @@ export default function SearchResultsScreen() {
         </ScrollView>
 
         <Text style={styles.resultsCount}>
-          {filteredProperties.length} {filteredProperties.length === 1 ? 'property' : 'properties'} found
+          {isLoading ? 'Loading...' : `${filteredProperties.length} ${filteredProperties.length === 1 ? 'property' : 'properties'} found`}
         </Text>
       </View>
 
