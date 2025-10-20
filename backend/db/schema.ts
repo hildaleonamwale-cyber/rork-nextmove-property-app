@@ -1,396 +1,265 @@
 import { sql } from "drizzle-orm";
-import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
+import {
+  sqliteTable,
+  text,
+  integer,
+  index,
+  unique,
+} from "drizzle-orm/sqlite-core";
+const timestamp = (name: string) =>
+  integer(name, { mode: "timestamp" }).default(sql`(unixepoch())`);
+
+const createId = () => {
+  return `${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+};
 
 export const users = sqliteTable("users", {
-  id: text("id").primaryKey(),
-  email: text("email").notNull().unique(),
-  password: text("password").notNull(),
+  id: text("id").primaryKey().$defaultFn(() => createId()),
+  email: text("email").unique().notNull(),
+  passwordHash: text("password_hash").notNull(),
   name: text("name").notNull(),
   phone: text("phone"),
   avatar: text("avatar"),
-  role: text("role", { enum: ["client", "agent", "agency", "admin"] })
+  role: text("role", {
+    enum: ["client", "agent", "agency", "admin"],
+  })
     .notNull()
     .default("client"),
   verified: integer("verified", { mode: "boolean" }).notNull().default(false),
   blocked: integer("blocked", { mode: "boolean" }).notNull().default(false),
-  lastActive: integer("last_active", { mode: "timestamp" }),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: integer("updated_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
+  createdAt: timestamp("created_at").notNull(),
+  updatedAt: timestamp("updated_at").notNull(),
 });
 
-export const agentProfiles = sqliteTable("agent_profiles", {
-  id: text("id").primaryKey(),
-  userId: text("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  package: text("package", { enum: ["free", "pro", "agency"] })
-    .notNull()
-    .default("free"),
-  accountSetupComplete: integer("account_setup_complete", { mode: "boolean" })
-    .notNull()
-    .default(false),
-  companyName: text("company_name"),
-  companyLogo: text("company_logo"),
-  banner: text("banner"),
-  bio: text("bio"),
-  specialties: text("specialties"),
-  yearsExperience: integer("years_experience"),
-  languages: text("languages"),
-  phone: text("phone"),
-  email: text("email"),
-  website: text("website"),
-  address: text("address"),
-  socialMedia: text("social_media"),
-  followers: integer("followers").notNull().default(0),
-  following: integer("following").notNull().default(0),
-  verified: integer("verified", { mode: "boolean" }).notNull().default(false),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: integer("updated_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-});
-
-export const properties = sqliteTable("properties", {
-  id: text("id").primaryKey(),
-  title: text("title").notNull(),
-  description: text("description").notNull(),
-  price: real("price").notNull(),
-  priceType: text("price_type", { enum: ["monthly", "sale"] }).notNull(),
-  location: text("location").notNull(),
-  images: text("images").notNull(),
-  bedrooms: integer("bedrooms"),
-  bathrooms: integer("bathrooms"),
-  area: real("area").notNull(),
-  propertyType: text("property_type"),
-  listingCategory: text("listing_category", {
-    enum: ["property", "stand", "room", "commercial"],
+export const sessions = sqliteTable(
+  "sessions",
+  {
+    id: text("id").primaryKey().$defaultFn(() => createId()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    token: text("token").notNull().unique(),
+    refreshToken: text("refresh_token").notNull().unique(),
+    expiresAt: timestamp("expires_at").notNull(),
+    refreshExpiresAt: timestamp("refresh_expires_at").notNull(),
+    createdAt: timestamp("created_at").notNull(),
+  },
+  (table) => ({
+    userIdIdx: index("sessions_user_id_idx").on(table.userId),
   })
-    .notNull()
-    .default("property"),
-  status: text("status", {
-    enum: ["For Rent", "For Sale", "Internal Management"],
-  }).notNull(),
-  verified: integer("verified", { mode: "boolean" }).notNull().default(false),
-  featured: integer("featured", { mode: "boolean" }).notNull().default(false),
-  amenities: text("amenities"),
-  features: text("features"),
-  tourLink: text("tour_link"),
-  agentId: text("agent_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  views: integer("views").notNull().default(0),
-  bookings: integer("bookings").notNull().default(0),
-  inquiries: integer("inquiries").notNull().default(0),
-  lister: text("lister"),
-  floors: integer("floors"),
-  parkingSpaces: integer("parking_spaces"),
-  titleDeeds: integer("title_deeds", { mode: "boolean" }),
-  serviced: integer("serviced", { mode: "boolean" }),
-  developerSession: text("developer_session"),
-  furnished: integer("furnished", { mode: "boolean" }),
-  yearBuilt: integer("year_built"),
-  zoning: text("zoning"),
-  flagged: integer("flagged", { mode: "boolean" }).notNull().default(false),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: integer("updated_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-});
+);
 
-export const managedProperties = sqliteTable("managed_properties", {
-  id: text("id").primaryKey(),
-  agentId: text("agent_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  name: text("name").notNull(),
-  address: text("address").notNull(),
-  type: text("type", { enum: ["Residential", "Commercial"] }).notNull(),
-  status: text("status", {
-    enum: ["Vacant", "Occupied", "Under Maintenance", "For Sale"],
-  }).notNull(),
-  notes: text("notes"),
-  images: text("images").notNull(),
-  tenant: text("tenant"),
-  isListed: integer("is_listed", { mode: "boolean" }).notNull().default(false),
-  listedPropertyId: text("listed_property_id"),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: integer("updated_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-});
+export const agents = sqliteTable(
+  "agents",
+  {
+    id: text("id").primaryKey().$defaultFn(() => createId()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" })
+      .unique(),
+    companyName: text("company_name"),
+    bio: text("bio"),
+    specialization: text("specialization"),
+    licenseNumber: text("license_number"),
+    yearsOfExperience: integer("years_of_experience"),
+    packageLevel: text("package_level", {
+      enum: ["free", "pro", "agency"],
+    })
+      .notNull()
+      .default("free"),
+    packageExpiry: timestamp("package_expiry"),
+    areasServed: text("areas_served"),
+    website: text("website"),
+    facebook: text("facebook"),
+    twitter: text("twitter"),
+    instagram: text("instagram"),
+    linkedin: text("linkedin"),
+    rating: integer("rating").default(0),
+    reviewCount: integer("review_count").default(0),
+    createdAt: timestamp("created_at").notNull(),
+    updatedAt: timestamp("updated_at").notNull(),
+  },
+  (table) => ({
+    userIdIdx: index("agents_user_id_idx").on(table.userId),
+  })
+);
 
-export const propertyDocuments = sqliteTable("property_documents", {
-  id: text("id").primaryKey(),
-  managedPropertyId: text("managed_property_id")
-    .notNull()
-    .references(() => managedProperties.id, { onDelete: "cascade" }),
-  name: text("name").notNull(),
-  type: text("type", { enum: ["invoice", "inspection", "lease", "other"] })
-    .notNull(),
-  url: text("url").notNull(),
-  uploadedAt: integer("uploaded_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-});
+export const properties = sqliteTable(
+  "properties",
+  {
+    id: text("id").primaryKey().$defaultFn(() => createId()),
+    agentId: text("agent_id")
+      .notNull()
+      .references(() => agents.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    description: text("description"),
+    propertyType: text("property_type").notNull(),
+    listingCategory: text("listing_category", {
+      enum: ["property", "stand", "room", "commercial"],
+    })
+      .notNull()
+      .default("property"),
+    status: text("status", {
+      enum: ["For Rent", "For Sale", "Internal Management"],
+    })
+      .notNull()
+      .default("For Rent"),
+    price: integer("price").notNull(),
+    priceType: text("price_type", { enum: ["monthly", "total"] })
+      .notNull()
+      .default("monthly"),
+    images: text("images").notNull(),
+    bedrooms: integer("bedrooms"),
+    bathrooms: integer("bathrooms"),
+    area: integer("area"),
+    areaUnit: text("area_unit"),
+    furnished: integer("furnished", { mode: "boolean" }),
+    parking: integer("parking", { mode: "boolean" }),
+    amenities: text("amenities"),
+    address: text("address").notNull(),
+    city: text("city").notNull(),
+    state: text("state"),
+    country: text("country").notNull(),
+    zipCode: text("zip_code"),
+    latitude: text("latitude"),
+    longitude: text("longitude"),
+    featured: integer("featured", { mode: "boolean" }).default(false),
+    views: integer("views").default(0),
+    inquiries: integer("inquiries").default(0),
+    createdAt: timestamp("created_at").notNull(),
+    updatedAt: timestamp("updated_at").notNull(),
+  },
+  (table) => ({
+    agentIdIdx: index("properties_agent_id_idx").on(table.agentId),
+    userIdIdx: index("properties_user_id_idx").on(table.userId),
+    cityIdx: index("properties_city_idx").on(table.city),
+    statusIdx: index("properties_status_idx").on(table.status),
+  })
+);
 
-export const bookings = sqliteTable("bookings", {
-  id: text("id").primaryKey(),
-  propertyId: text("property_id")
-    .notNull()
-    .references(() => properties.id, { onDelete: "cascade" }),
-  clientId: text("client_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  agentId: text("agent_id")
-    .notNull()
-    .references(() => users.id),
-  date: integer("date", { mode: "timestamp" }).notNull(),
-  time: text("time").notNull(),
-  clientName: text("client_name").notNull(),
-  clientEmail: text("client_email").notNull(),
-  clientPhone: text("client_phone").notNull(),
-  notes: text("notes"),
-  status: text("status", { enum: ["pending", "confirmed", "cancelled"] })
-    .notNull()
-    .default("pending"),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: integer("updated_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-});
+export const bookings = sqliteTable(
+  "bookings",
+  {
+    id: text("id").primaryKey().$defaultFn(() => createId()),
+    propertyId: text("property_id")
+      .notNull()
+      .references(() => properties.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    propertyTitle: text("property_title"),
+    date: text("date").notNull(),
+    time: text("time").notNull(),
+    clientName: text("client_name").notNull(),
+    clientEmail: text("client_email").notNull(),
+    clientPhone: text("client_phone").notNull(),
+    notes: text("notes"),
+    status: text("status", {
+      enum: ["pending", "confirmed", "cancelled"],
+    })
+      .notNull()
+      .default("pending"),
+    createdAt: timestamp("created_at").notNull(),
+  },
+  (table) => ({
+    propertyIdIdx: index("bookings_property_id_idx").on(table.propertyId),
+    userIdIdx: index("bookings_user_id_idx").on(table.userId),
+    statusIdx: index("bookings_status_idx").on(table.status),
+  })
+);
 
-export const bookingSlots = sqliteTable("booking_slots", {
-  id: text("id").primaryKey(),
-  agentId: text("agent_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  date: integer("date", { mode: "timestamp" }).notNull(),
-  startTime: text("start_time").notNull(),
-  endTime: text("end_time").notNull(),
-  notes: text("notes"),
-  booked: integer("booked", { mode: "boolean" }).notNull().default(false),
-  bookedBy: text("booked_by"),
-  clientId: text("client_id").references(() => users.id),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: integer("updated_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-});
+export const messages = sqliteTable(
+  "messages",
+  {
+    id: text("id").primaryKey().$defaultFn(() => createId()),
+    senderId: text("sender_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    receiverId: text("receiver_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    content: text("content").notNull(),
+    read: integer("read", { mode: "boolean" }).notNull().default(false),
+    createdAt: timestamp("created_at").notNull(),
+  },
+  (table) => ({
+    senderIdIdx: index("messages_sender_id_idx").on(table.senderId),
+    receiverIdIdx: index("messages_receiver_id_idx").on(table.receiverId),
+    conversationIdx: index("messages_conversation_idx").on(
+      table.senderId,
+      table.receiverId
+    ),
+  })
+);
 
-export const staff = sqliteTable("staff", {
-  id: text("id").primaryKey(),
-  agentId: text("agent_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  name: text("name").notNull(),
-  email: text("email").notNull(),
-  avatar: text("avatar"),
-  role: text("role").notNull(),
-  phone: text("phone"),
-  permissions: text("permissions"),
-  active: integer("active", { mode: "boolean" }).notNull().default(true),
-  inviteToken: text("invite_token"),
-  inviteExpiry: integer("invite_expiry", { mode: "timestamp" }),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: integer("updated_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-});
+export const notifications = sqliteTable(
+  "notifications",
+  {
+    id: text("id").primaryKey().$defaultFn(() => createId()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    title: text("title").notNull(),
+    message: text("message").notNull(),
+    data: text("data"),
+    read: integer("read", { mode: "boolean" }).notNull().default(false),
+    createdAt: timestamp("created_at").notNull(),
+  },
+  (table) => ({
+    userIdIdx: index("notifications_user_id_idx").on(table.userId),
+    readIdx: index("notifications_read_idx").on(table.read),
+  })
+);
 
-export const agentUpdates = sqliteTable("agent_updates", {
-  id: text("id").primaryKey(),
-  agentId: text("agent_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  content: text("content").notNull(),
-  images: text("images"),
-  timestamp: integer("timestamp", { mode: "timestamp" })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-});
-
-export const profileCards = sqliteTable("profile_cards", {
-  id: text("id").primaryKey(),
-  agentId: text("agent_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  image: text("image").notNull(),
-  title: text("title").notNull(),
-  description: text("description"),
-  ctaText: text("cta_text").notNull(),
-  ctaLink: text("cta_link"),
-  propertyId: text("property_id").references(() => properties.id),
-  order: integer("order").notNull().default(0),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: integer("updated_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-});
-
-export const messages = sqliteTable("messages", {
-  id: text("id").primaryKey(),
-  senderId: text("sender_id")
-    .notNull()
-    .references(() => users.id),
-  receiverId: text("receiver_id")
-    .notNull()
-    .references(() => users.id),
-  content: text("content").notNull(),
-  images: text("images"),
-  read: integer("read", { mode: "boolean" }).notNull().default(false),
-  timestamp: integer("timestamp", { mode: "timestamp" })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-});
-
-export const wishlists = sqliteTable("wishlists", {
-  id: text("id").primaryKey(),
-  userId: text("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  propertyId: text("property_id")
-    .notNull()
-    .references(() => properties.id, { onDelete: "cascade" }),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-});
-
-export const notifications = sqliteTable("notifications", {
-  id: text("id").primaryKey(),
-  userId: text("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  title: text("title").notNull(),
-  message: text("message").notNull(),
-  type: text("type", {
-    enum: ["booking", "message", "update", "system", "alert"],
-  }).notNull(),
-  read: integer("read", { mode: "boolean" }).notNull().default(false),
-  data: text("data"),
-  timestamp: integer("timestamp", { mode: "timestamp" })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-});
-
-export const propertyFlags = sqliteTable("property_flags", {
-  id: text("id").primaryKey(),
-  propertyId: text("property_id")
-    .notNull()
-    .references(() => properties.id, { onDelete: "cascade" }),
-  reportedBy: text("reported_by")
-    .notNull()
-    .references(() => users.id),
-  reporterName: text("reporter_name").notNull(),
-  reason: text("reason").notNull(),
-  description: text("description").notNull(),
-  status: text("status", { enum: ["pending", "resolved", "dismissed"] })
-    .notNull()
-    .default("pending"),
-  resolvedBy: text("resolved_by"),
-  resolvedAt: integer("resolved_at", { mode: "timestamp" }),
-  resolutionNotes: text("resolution_notes"),
-  timestamp: integer("timestamp", { mode: "timestamp" })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-});
-
-export const userFlags = sqliteTable("user_flags", {
-  id: text("id").primaryKey(),
-  userId: text("user_id")
-    .notNull()
-    .references(() => users.id),
-  reportedBy: text("reported_by")
-    .notNull()
-    .references(() => users.id),
-  reporterName: text("reporter_name").notNull(),
-  reason: text("reason").notNull(),
-  description: text("description").notNull(),
-  status: text("status", { enum: ["pending", "resolved", "dismissed"] })
-    .notNull()
-    .default("pending"),
-  resolvedBy: text("resolved_by"),
-  resolvedAt: integer("resolved_at", { mode: "timestamp" }),
-  resolutionNotes: text("resolution_notes"),
-  timestamp: integer("timestamp", { mode: "timestamp" })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-});
-
-export const auditLogs = sqliteTable("audit_logs", {
-  id: text("id").primaryKey(),
-  adminId: text("admin_id")
-    .notNull()
-    .references(() => users.id),
-  adminName: text("admin_name").notNull(),
-  action: text("action").notNull(),
-  targetType: text("target_type").notNull(),
-  targetId: text("target_id").notNull(),
-  details: text("details").notNull(),
-  metadata: text("metadata"),
-  timestamp: integer("timestamp", { mode: "timestamp" })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-});
+export const wishlists = sqliteTable(
+  "wishlists",
+  {
+    id: text("id").primaryKey().$defaultFn(() => createId()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    propertyId: text("property_id")
+      .notNull()
+      .references(() => properties.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").notNull(),
+  },
+  (table) => ({
+    userPropertyUnique: unique("user_property_unique").on(
+      table.userId,
+      table.propertyId
+    ),
+    userIdIdx: index("wishlists_user_id_idx").on(table.userId),
+    propertyIdIdx: index("wishlists_property_id_idx").on(table.propertyId),
+  })
+);
 
 export const banners = sqliteTable("banners", {
-  id: text("id").primaryKey(),
-  image: text("image").notNull(),
+  id: text("id").primaryKey().$defaultFn(() => createId()),
+  imageUrl: text("image_url").notNull(),
   title: text("title").notNull(),
-  description: text("description"),
-  ctaText: text("cta_text"),
-  ctaLink: text("cta_link"),
+  link: text("link").notNull(),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
   order: integer("order").notNull().default(0),
-  active: integer("active", { mode: "boolean" }).notNull().default(true),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: integer("updated_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
+  createdAt: timestamp("created_at").notNull(),
+  updatedAt: timestamp("updated_at").notNull(),
 });
 
-export const sections = sqliteTable("sections", {
-  id: text("id").primaryKey(),
+export const homepageSections = sqliteTable("homepage_sections", {
+  id: text("id").primaryKey().$defaultFn(() => createId()),
+  type: text("type", {
+    enum: ["featured_properties", "browse_properties", "featured_agencies", "custom"],
+  }).notNull(),
   title: text("title").notNull(),
-  type: text("type").notNull(),
-  properties: text("properties"),
+  subtitle: text("subtitle"),
+  icon: text("icon"),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
   order: integer("order").notNull().default(0),
-  active: integer("active", { mode: "boolean" }).notNull().default(true),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: integer("updated_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-});
-
-export const sessions = sqliteTable("sessions", {
-  id: text("id").primaryKey(),
-  userId: text("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  token: text("token").notNull().unique(),
-  expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
+  config: text("config").notNull(),
+  analytics: text("analytics"),
+  createdAt: timestamp("created_at").notNull(),
+  updatedAt: timestamp("updated_at").notNull(),
 });

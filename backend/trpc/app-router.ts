@@ -18,6 +18,15 @@ import { blockUserProcedure } from "./routes/admin/block-user/route";
 import { unblockUserProcedure } from "./routes/admin/unblock-user/route";
 import { verifyUserProcedure } from "./routes/admin/verify-user/route";
 import { getUserStatsProcedure } from "./routes/admin/get-user-stats/route";
+import { getDashboardAnalyticsProcedure } from "./routes/admin/get-dashboard-analytics/route";
+import { listBannersProcedure } from "./routes/admin/banners/list/route";
+import { createBannerProcedure } from "./routes/admin/banners/create/route";
+import { updateBannerProcedure } from "./routes/admin/banners/update/route";
+import { deleteBannerProcedure } from "./routes/admin/banners/delete/route";
+import { listSectionsProcedure } from "./routes/admin/sections/list/route";
+import { createSectionProcedure } from "./routes/admin/sections/create/route";
+import { updateSectionProcedure } from "./routes/admin/sections/update/route";
+import { deleteSectionProcedure } from "./routes/admin/sections/delete/route";
 import { createPropertyProcedure } from "./routes/properties/create-property/route";
 import { getPropertyProcedure } from "./routes/properties/get-property/route";
 import { listPropertiesProcedure } from "./routes/properties/list-properties/route";
@@ -73,6 +82,19 @@ export const appRouter = createTRPCRouter({
     unblockUser: unblockUserProcedure,
     verifyUser: verifyUserProcedure,
     getUserStats: getUserStatsProcedure,
+    getDashboardAnalytics: getDashboardAnalyticsProcedure,
+    banners: createTRPCRouter({
+      list: listBannersProcedure,
+      create: createBannerProcedure,
+      update: updateBannerProcedure,
+      delete: deleteBannerProcedure,
+    }),
+    sections: createTRPCRouter({
+      list: listSectionsProcedure,
+      create: createSectionProcedure,
+      update: updateSectionProcedure,
+      delete: deleteSectionProcedure,
+    }),
   }),
   properties: createTRPCRouter({
     create: createPropertyProcedure,

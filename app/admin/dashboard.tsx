@@ -26,7 +26,7 @@ import {
 } from 'lucide-react-native';
 import { useSuperAdmin } from '@/contexts/SuperAdminContext';
 import Colors from '@/constants/colors';
-import type { DashboardAnalytics } from '@/types/admin';
+import { trpc } from '@/lib/trpc';
 
 export default function SuperAdminDashboard() {
   const router = useRouter();
@@ -34,51 +34,127 @@ export default function SuperAdminDashboard() {
   const { isSuperAdmin } = useSuperAdmin();
   const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'year'>('month');
 
-  const mockAnalytics: DashboardAnalytics = useMemo(() => ({
-    overview: {
-      totalUsers: 12847,
-      totalAgents: 342,
-      totalAgencies: 87,
-      totalProperties: 4521,
-      totalBookings: 8934,
-      activeListings: 3842,
-      flaggedContent: 23,
-      blockedUsers: 15,
-    },
-    trends: {
-      newUsersThisMonth: 487,
-      newUsersLastMonth: 423,
-      bookingsThisWeek: 234,
-      bookingsLastWeek: 198,
-      listingsThisMonth: 156,
-      listingsLastMonth: 142,
-    },
-    usersByRole: {
-      clients: 12418,
-      agents: 342,
-      agencies: 87,
-    },
-    usersByPackage: {
-      free: 11923,
-      pro: 837,
-      agency: 87,
-    },
-    propertiesByType: {
-      apartment: 2145,
-      house: 1342,
-      villa: 456,
-      condo: 378,
-      commercial: 200,
-    },
-    propertiesByStatus: {
-      forRent: 2834,
-      forSale: 1243,
-      managed: 344,
-      vacant: 67,
-      occupied: 277,
-    },
-    recentActivity: [],
-  }), []);
+  const { data: analytics, isLoading: analyticsLoading } = trpc.admin.getDashboardAnalytics.useQuery();
+
+  const mockAnalytics = useMemo(() => {
+    if (!analytics) return null;
+    return {
+      ...analytics,
+      recentActivity: [],
+    };
+  }, [analytics]);
+
+  const chartData = useMemo(() => {
+    return [
+      { label: 'Mon', users: 120, properties: 45, bookings: 32 },
+      { label: 'Tue', users: 145, properties: 52, bookings: 38 },
+      { label: 'Wed', users: 132, properties: 48, bookings: 35 },
+      { label: 'Thu', users: 168, properties: 61, bookings: 42 },
+      { label: 'Fri', users: 189, properties: 68, bookings: 48 },
+      { label: 'Sat', users: 156, properties: 55, bookings: 40 },
+      { label: 'Sun', users: 134, properties: 50, bookings: 36 },
+    ];
+  }, []);
+
+  const pieChartData = useMemo(() => {
+    if (!mockAnalytics) return [];
+    const total = mockAnalytics.overview.totalProperties;
+    return [
+      { 
+        value: mockAnalytics.propertiesByType.apartment, 
+        percentage: (mockAnalytics.propertiesByType.apartment / total * 100).toFixed(1),
+        color: '#3B82F6',
+        label: 'Apartments'
+      },
+      { 
+        value: mockAnalytics.propertiesByType.house, 
+        percentage: (mockAnalytics.propertiesByType.house / total * 100).toFixed(1),
+        color: '#10B981',
+        label: 'Houses'
+      },
+      { 
+        value: mockAnalytics.propertiesByType.villa, 
+        percentage: (mockAnalytics.propertiesByType.villa / total * 100).toFixed(1),
+        color: '#F59E0B',
+        label: 'Villas'
+      },
+      { 
+        value: mockAnalytics.propertiesByType.condo, 
+        percentage: (mockAnalytics.propertiesByType.condo / total * 100).toFixed(1),
+        color: '#8B5CF6',
+        label: 'Condos'
+      },
+      { 
+        value: mockAnalytics.propertiesByType.commercial, 
+        percentage: (mockAnalytics.propertiesByType.commercial / total * 100).toFixed(1),
+        color: '#EC4899',
+        label: 'Commercial'
+      },
+    ];
+  }, [mockAnalytics]);
+
+  const maxChartValue = useMemo(() => {
+    return Math.max(...chartData.map((d: any) => Math.max(d.users, d.properties, d.bookings)));
+  }, [chartData]);
+
+  const stats = useMemo(() => {
+    if (!mockAnalytics) return [];
+    return [
+      { 
+        label: 'Total Users', 
+        value: mockAnalytics.overview.totalUsers.toLocaleString(), 
+        color: '#3B82F6',
+        trend: ((mockAnalytics.trends.newUsersThisMonth - mockAnalytics.trends.newUsersLastMonth) / mockAnalytics.trends.newUsersLastMonth * 100).toFixed(1),
+        trendUp: mockAnalytics.trends.newUsersThisMonth > mockAnalytics.trends.newUsersLastMonth,
+      },
+      { 
+        label: 'Active Listings', 
+        value: mockAnalytics.overview.activeListings.toLocaleString(), 
+        color: '#10B981',
+        trend: ((mockAnalytics.trends.listingsThisMonth - mockAnalytics.trends.listingsLastMonth) / mockAnalytics.trends.listingsLastMonth * 100).toFixed(1),
+        trendUp: mockAnalytics.trends.listingsThisMonth > mockAnalytics.trends.listingsLastMonth,
+      },
+      { 
+        label: 'Total Properties', 
+        value: mockAnalytics.overview.totalProperties.toLocaleString(), 
+        color: '#8B5CF6',
+        trend: '12.3',
+        trendUp: true,
+      },
+      { 
+        label: 'Bookings', 
+        value: mockAnalytics.overview.totalBookings.toLocaleString(), 
+        color: '#F59E0B',
+        trend: ((mockAnalytics.trends.bookingsThisWeek - mockAnalytics.trends.bookingsLastWeek) / mockAnalytics.trends.bookingsLastWeek * 100).toFixed(1),
+        trendUp: mockAnalytics.trends.bookingsThisWeek > mockAnalytics.trends.bookingsLastWeek,
+      },
+      { 
+        label: 'Flagged Content', 
+        value: mockAnalytics.overview.flaggedContent.toString(), 
+        color: '#EF4444',
+        trend: '-15.2',
+        trendUp: false,
+      },
+      { 
+        label: 'Agents', 
+        value: mockAnalytics.overview.totalAgents.toString(), 
+        color: '#EC4899',
+        trend: '8.7',
+        trendUp: true,
+      },
+    ];
+  }, [mockAnalytics]);
+
+  if (analyticsLoading || !analytics || !mockAnalytics) {
+    return (
+      <View style={[styles.container, { paddingTop: Platform.OS === 'web' ? 60 : insets.top + 20 }]}>
+        <View style={styles.errorContainer}>
+          <Activity size={64} color={Colors.primary} />
+          <Text style={styles.errorTitle}>Loading Dashboard...</Text>
+        </View>
+      </View>
+    );
+  }
 
   if (!isSuperAdmin) {
     return (
@@ -143,103 +219,6 @@ export default function SuperAdminDashboard() {
       icon: Settings,
       color: '#6B7280',
       route: '/admin/settings',
-    },
-  ];
-
-  const chartData = useMemo(() => {
-    return [
-      { label: 'Mon', users: 120, properties: 45, bookings: 32 },
-      { label: 'Tue', users: 145, properties: 52, bookings: 38 },
-      { label: 'Wed', users: 132, properties: 48, bookings: 35 },
-      { label: 'Thu', users: 168, properties: 61, bookings: 42 },
-      { label: 'Fri', users: 189, properties: 68, bookings: 48 },
-      { label: 'Sat', users: 156, properties: 55, bookings: 40 },
-      { label: 'Sun', users: 134, properties: 50, bookings: 36 },
-    ];
-  }, []);
-
-  const pieChartData = useMemo(() => {
-    const total = mockAnalytics.overview.totalProperties;
-    return [
-      { 
-        value: mockAnalytics.propertiesByType.apartment, 
-        percentage: (mockAnalytics.propertiesByType.apartment / total * 100).toFixed(1),
-        color: '#3B82F6',
-        label: 'Apartments'
-      },
-      { 
-        value: mockAnalytics.propertiesByType.house, 
-        percentage: (mockAnalytics.propertiesByType.house / total * 100).toFixed(1),
-        color: '#10B981',
-        label: 'Houses'
-      },
-      { 
-        value: mockAnalytics.propertiesByType.villa, 
-        percentage: (mockAnalytics.propertiesByType.villa / total * 100).toFixed(1),
-        color: '#F59E0B',
-        label: 'Villas'
-      },
-      { 
-        value: mockAnalytics.propertiesByType.condo, 
-        percentage: (mockAnalytics.propertiesByType.condo / total * 100).toFixed(1),
-        color: '#8B5CF6',
-        label: 'Condos'
-      },
-      { 
-        value: mockAnalytics.propertiesByType.commercial, 
-        percentage: (mockAnalytics.propertiesByType.commercial / total * 100).toFixed(1),
-        color: '#EC4899',
-        label: 'Commercial'
-      },
-    ];
-  }, [mockAnalytics]);
-
-  const maxChartValue = useMemo(() => {
-    return Math.max(...chartData.map(d => Math.max(d.users, d.properties, d.bookings)));
-  }, [chartData]);
-
-  const stats = [
-    { 
-      label: 'Total Users', 
-      value: mockAnalytics.overview.totalUsers.toLocaleString(), 
-      color: '#3B82F6',
-      trend: ((mockAnalytics.trends.newUsersThisMonth - mockAnalytics.trends.newUsersLastMonth) / mockAnalytics.trends.newUsersLastMonth * 100).toFixed(1),
-      trendUp: mockAnalytics.trends.newUsersThisMonth > mockAnalytics.trends.newUsersLastMonth,
-    },
-    { 
-      label: 'Active Listings', 
-      value: mockAnalytics.overview.activeListings.toLocaleString(), 
-      color: '#10B981',
-      trend: ((mockAnalytics.trends.listingsThisMonth - mockAnalytics.trends.listingsLastMonth) / mockAnalytics.trends.listingsLastMonth * 100).toFixed(1),
-      trendUp: mockAnalytics.trends.listingsThisMonth > mockAnalytics.trends.listingsLastMonth,
-    },
-    { 
-      label: 'Total Properties', 
-      value: mockAnalytics.overview.totalProperties.toLocaleString(), 
-      color: '#8B5CF6',
-      trend: '12.3',
-      trendUp: true,
-    },
-    { 
-      label: 'Bookings', 
-      value: mockAnalytics.overview.totalBookings.toLocaleString(), 
-      color: '#F59E0B',
-      trend: ((mockAnalytics.trends.bookingsThisWeek - mockAnalytics.trends.bookingsLastWeek) / mockAnalytics.trends.bookingsLastWeek * 100).toFixed(1),
-      trendUp: mockAnalytics.trends.bookingsThisWeek > mockAnalytics.trends.bookingsLastWeek,
-    },
-    { 
-      label: 'Flagged Content', 
-      value: mockAnalytics.overview.flaggedContent.toString(), 
-      color: '#EF4444',
-      trend: '-15.2',
-      trendUp: false,
-    },
-    { 
-      label: 'Agents', 
-      value: mockAnalytics.overview.totalAgents.toString(), 
-      color: '#EC4899',
-      trend: '8.7',
-      trendUp: true,
     },
   ];
 
