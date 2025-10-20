@@ -263,3 +263,62 @@ export const homepageSections = sqliteTable("homepage_sections", {
   createdAt: timestamp("created_at").notNull(),
   updatedAt: timestamp("updated_at").notNull(),
 });
+
+export const staff = sqliteTable(
+  "staff",
+  {
+    id: text("id").primaryKey().$defaultFn(() => createId()),
+    agentId: text("agent_id")
+      .notNull()
+      .references(() => agents.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    role: text("role").notNull(),
+    email: text("email").notNull(),
+    phone: text("phone"),
+    permissions: text("permissions").notNull(),
+    active: integer("active", { mode: "boolean" }).notNull().default(false),
+    inviteToken: text("invite_token"),
+    inviteExpiry: timestamp("invite_expiry"),
+    createdAt: timestamp("created_at").notNull(),
+    updatedAt: timestamp("updated_at").notNull(),
+  },
+  (table) => ({
+    agentIdIdx: index("staff_agent_id_idx").on(table.agentId),
+  })
+);
+
+export const managedProperties = sqliteTable(
+  "managed_properties",
+  {
+    id: text("id").primaryKey().$defaultFn(() => createId()),
+    agentId: text("agent_id")
+      .notNull()
+      .references(() => agents.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    address: text("address").notNull(),
+    type: text("type", { enum: ["Residential", "Commercial"] })
+      .notNull()
+      .default("Residential"),
+    status: text("status", {
+      enum: ["Vacant", "Occupied", "Under Maintenance", "For Sale"],
+    })
+      .notNull()
+      .default("Vacant"),
+    notes: text("notes"),
+    images: text("images"),
+    documents: text("documents"),
+    tenantName: text("tenant_name"),
+    tenantPhone: text("tenant_phone"),
+    tenantEmail: text("tenant_email"),
+    tenantMoveInDate: timestamp("tenant_move_in_date"),
+    isListed: integer("is_listed", { mode: "boolean" }).notNull().default(false),
+    listedPropertyId: text("listed_property_id").references(() => properties.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at").notNull(),
+    updatedAt: timestamp("updated_at").notNull(),
+  },
+  (table) => ({
+    agentIdIdx: index("managed_properties_agent_id_idx").on(table.agentId),
+  })
+);

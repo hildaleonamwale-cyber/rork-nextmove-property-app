@@ -52,6 +52,15 @@ import { deleteNotificationProcedure } from "./routes/notifications/delete-notif
 import { addToWishlistProcedure } from "./routes/wishlists/add/route";
 import { removeFromWishlistProcedure } from "./routes/wishlists/remove/route";
 import { listWishlistProcedure } from "./routes/wishlists/list/route";
+import { addStaffProcedure } from "./routes/staff/add/route";
+import { listStaffProcedure } from "./routes/staff/list/route";
+import { updateStaffProcedure } from "./routes/staff/update/route";
+import { removeStaffProcedure } from "./routes/staff/remove/route";
+import { addManagedPropertyProcedure } from "./routes/managed-properties/add/route";
+import { listManagedPropertiesProcedure } from "./routes/managed-properties/list/route";
+import { updateManagedPropertyProcedure } from "./routes/managed-properties/update/route";
+import { deleteManagedPropertyProcedure } from "./routes/managed-properties/delete/route";
+import { getAnalyticsProcedure } from "./routes/agents/get-analytics/route";
 
 export const appRouter = createTRPCRouter({
   example: createTRPCRouter({
@@ -74,6 +83,7 @@ export const appRouter = createTRPCRouter({
     createProfile: createAgentProfileProcedure,
     updateProfile: updateAgentProfileProcedure,
     upgradePackage: upgradePackageProcedure,
+    getAnalytics: getAnalyticsProcedure,
   }),
   admin: createTRPCRouter({
     listUsers: listUsersProcedure,
@@ -132,6 +142,18 @@ export const appRouter = createTRPCRouter({
     add: addToWishlistProcedure,
     remove: removeFromWishlistProcedure,
     list: listWishlistProcedure,
+  }),
+  staff: createTRPCRouter({
+    add: addStaffProcedure,
+    list: listStaffProcedure,
+    update: updateStaffProcedure,
+    remove: removeStaffProcedure,
+  }),
+  managedProperties: createTRPCRouter({
+    add: addManagedPropertyProcedure,
+    list: listManagedPropertiesProcedure,
+    update: updateManagedPropertyProcedure,
+    delete: deleteManagedPropertyProcedure,
   }),
 });
 

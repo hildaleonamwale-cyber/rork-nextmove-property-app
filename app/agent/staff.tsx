@@ -29,13 +29,15 @@ import {
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
-import { useAgentProfile } from '@/contexts/AgentProfileContext';
-import { StaffMember } from '@/types/property';
+import { trpc } from '@/lib/trpc';
 
 export default function StaffScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { profile, addStaffMember, updateStaffMember, removeStaffMember } = useAgentProfile();
+  const staffQuery = trpc.staff.list.useQuery();
+  const addStaffMutation = trpc.staff.add.useMutation();
+  const updateStaffMutation = trpc.staff.update.useMutation();
+  const removeStaffMutation = trpc.staff.remove.useMutation();
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingMember, setEditingMember] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -69,44 +71,60 @@ export default function StaffScreen() {
     }
 
     const inviteToken = generateInviteToken();
-    const newMember: StaffMember = {
-      id: Date.now().toString(),
-      name: formData.name,
-      role: formData.role || 'Agent',
-      email: formData.email,
-      phone: formData.phone,
-      permissions: formData.permissions,
-      active: false,
-      inviteToken,
-      inviteExpiry: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    };
+    const inviteExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-    await addStaffMember(newMember);
-    const link = `https://app.example.com/invite?token=${inviteToken}`;
-    setInviteLink(link);
-    setShowInviteModal(true);
-    resetForm();
+    try {
+      await addStaffMutation.mutateAsync({
+        name: formData.name,
+        role: formData.role || 'Agent',
+        email: formData.email,
+        phone: formData.phone,
+        permissions: formData.permissions,
+        inviteToken,
+        inviteExpiry,
+      });
+      await staffQuery.refetch();
+      const link = `https://app.example.com/invite?token=${inviteToken}`;
+      setInviteLink(link);
+      setShowInviteModal(true);
+      resetForm();
+    } catch (error) {
+      console.error('Failed to add staff member:', error);
+      Alert.alert('Error', 'Failed to add staff member. Please try again.');
+    }
   };
 
   const handleEditMember = async () => {
     if (!editingMember) return;
 
-    await updateStaffMember(editingMember, {
-      name: formData.name || undefined,
-      role: formData.role || undefined,
-      email: formData.email || undefined,
-      phone: formData.phone || undefined,
-      permissions: formData.permissions.length > 0 ? formData.permissions : undefined,
-    });
-
-    resetForm();
+    try {
+      await updateStaffMutation.mutateAsync({
+        staffId: editingMember,
+        name: formData.name || undefined,
+        role: formData.role || undefined,
+        email: formData.email || undefined,
+        phone: formData.phone || undefined,
+        permissions: formData.permissions.length > 0 ? formData.permissions : undefined,
+      });
+      await staffQuery.refetch();
+      resetForm();
+    } catch (error) {
+      console.error('Failed to update staff member:', error);
+      Alert.alert('Error', 'Failed to update staff member. Please try again.');
+    }
   };
 
   const handleDeleteMember = async (id: string) => {
-    await removeStaffMember(id);
+    try {
+      await removeStaffMutation.mutateAsync({ staffId: id });
+      await staffQuery.refetch();
+    } catch (error) {
+      console.error('Failed to remove staff member:', error);
+      Alert.alert('Error', 'Failed to remove staff member. Please try again.');
+    }
   };
 
-  const openEditModal = (member: StaffMember) => {
+  const openEditModal = (member: any) => {
     setEditingMember(member.id);
     setFormData({
       name: member.name,
@@ -189,18 +207,22 @@ export default function StaffScreen() {
 
         <View style={styles.statsRow}>
           <View style={styles.statBox}>
-            <Text style={styles.statValue}>{profile.staff.length}</Text>
+            <Text style={styles.statValue}>{staffQuery.data?.length || 0}</Text>
             <Text style={styles.statLabel}>Team Members</Text>
           </View>
           <View style={styles.statBox}>
             <Text style={styles.statValue}>
-              {profile.staff.filter(m => m.active).length}
+              {staffQuery.data?.filter((m: any) => m.active).length || 0}
             </Text>
             <Text style={styles.statLabel}>Active</Text>
           </View>
         </View>
 
-        {profile.staff.length === 0 ? (
+        {staffQuery.isLoading ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>Loading...</Text>
+          </View>
+        ) : staffQuery.data?.length === 0 ? (
           <View style={styles.emptyState}>
             <Users size={64} color={Colors.text.light} />
             <Text style={styles.emptyTitle}>No Team Members</Text>
@@ -217,7 +239,7 @@ export default function StaffScreen() {
           </View>
         ) : (
           <View style={styles.membersList}>
-            {profile.staff.map((member) => (
+            {staffQuery.data?.map((member: any) => (
               <View key={member.id} style={styles.memberCard}>
                 <View style={styles.memberLeft}>
                   <View style={styles.avatarContainer}>
