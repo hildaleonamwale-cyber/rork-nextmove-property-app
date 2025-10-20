@@ -7,10 +7,16 @@ import { getAuthToken } from "@/utils/auth";
 export const trpc = createTRPCReact<AppRouter>();
 
 const getBaseUrl = () => {
-  if (process.env.EXPO_PUBLIC_RORK_API_BASE_URL) {
-    return process.env.EXPO_PUBLIC_RORK_API_BASE_URL;
+  const baseUrl = process.env.EXPO_PUBLIC_RORK_API_BASE_URL;
+  
+  if (baseUrl) {
+    console.log('tRPC Base URL:', baseUrl);
+    return baseUrl;
   }
 
+  console.error('EXPO_PUBLIC_RORK_API_BASE_URL not found in environment');
+  console.log('Available env vars:', Object.keys(process.env).filter(k => k.startsWith('EXPO_PUBLIC')));
+  
   throw new Error(
     "No base url found, please set EXPO_PUBLIC_RORK_API_BASE_URL"
   );

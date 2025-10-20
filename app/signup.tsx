@@ -58,6 +58,7 @@ export default function SignupScreen() {
     try {
       setIsLoading(true);
       console.log('Creating account:', { name, email, phone });
+      console.log('tRPC Base URL:', process.env.EXPO_PUBLIC_RORK_API_BASE_URL);
       
       const result = await signupMutation.mutateAsync({
         name,
@@ -79,7 +80,24 @@ export default function SignupScreen() {
       }, 2000);
     } catch (error: any) {
       console.error('Signup error:', error);
-      Alert.alert('Signup Failed', error.message || 'An error occurred during signup');
+      console.error('Error details:', {
+        message: error.message,
+        cause: error.cause,
+        data: error.data,
+        shape: error.shape,
+      });
+      
+      let errorMessage = 'An error occurred during signup';
+      
+      if (error.message?.includes('Failed to fetch')) {
+        errorMessage = 'Cannot connect to server. Please check your internet connection and try again.';
+      } else if (error.data?.code === 'CONFLICT') {
+        errorMessage = 'An account with this email already exists';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert('Signup Failed', errorMessage);
     } finally {
       setIsLoading(false);
     }
