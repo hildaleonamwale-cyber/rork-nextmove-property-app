@@ -9,6 +9,7 @@ import {
   Platform,
   ScrollView,
   Image,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, Eye, EyeOff, User, Mail, Phone } from 'lucide-react-native';
@@ -18,6 +19,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import Colors from '@/constants/colors';
 import SuccessPrompt from '@/components/SuccessPrompt';
+import { trpc } from '@/lib/trpc';
+import { setAuthToken, setUserData } from '@/utils/auth';
 
 export default function SignupScreen() {
   const router = useRouter();
@@ -33,30 +36,54 @@ export default function SignupScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
+  const signupMutation = trpc.auth.signup.useMutation();
+
   const handleSignup = useCallback(async () => {
+    if (!name || !email || !password) {
+      Alert.alert('Error', 'Please fill in all required fields');
+      return;
+    }
     if (!agreeTerms) {
-      alert('Please agree to the Terms and Conditions');
+      Alert.alert('Error', 'Please agree to the Terms and Conditions');
       return;
     }
     if (password !== confirmPassword) {
-      alert('Passwords do not match');
+      Alert.alert('Error', 'Passwords do not match');
+      return;
+    }
+    if (password.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters');
       return;
     }
     try {
       setIsLoading(true);
       console.log('Creating account:', { name, email, phone });
+      
+      const result = await signupMutation.mutateAsync({
+        name,
+        email,
+        phone: phone || undefined,
+        password,
+      });
+
+      await setAuthToken(result.token);
+      await setUserData(result.user);
       await AsyncStorage.setItem('@user_mode', 'client');
+
+      console.log('Signup successful:', result.user);
+
       setShowSuccess(true);
       setTimeout(() => {
         setShowSuccess(false);
         router.replace('/(tabs)/home' as any);
       }, 2000);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Signup error:', error);
+      Alert.alert('Signup Failed', error.message || 'An error occurred during signup');
     } finally {
       setIsLoading(false);
     }
-  }, [name, email, phone, password, confirmPassword, agreeTerms, router]);
+  }, [name, email, phone, password, confirmPassword, agreeTerms, router, signupMutation]);
 
   return (
     <View style={styles.container}>

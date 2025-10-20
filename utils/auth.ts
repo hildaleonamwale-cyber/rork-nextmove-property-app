@@ -8,7 +8,7 @@ export interface UserData {
   id: string;
   email: string;
   name: string;
-  role: 'user' | 'agent' | 'agency' | 'super_admin';
+  role: 'client' | 'agent' | 'agency' | 'admin';
   accountTier?: 'free' | 'pro' | 'agency';
 }
 
@@ -90,7 +90,7 @@ export async function isAuthenticated(): Promise<boolean> {
 
 export async function isSuperAdmin(): Promise<boolean> {
   const userData = await getUserData();
-  return userData?.role === 'super_admin';
+  return userData?.role === 'admin';
 }
 
 export async function isAgent(): Promise<boolean> {

@@ -9,6 +9,7 @@ import {
   Platform,
   ScrollView,
   Image,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react-native';
@@ -18,6 +19,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import Colors from '@/constants/colors';
 import { useSuperAdmin } from '@/contexts/SuperAdminContext';
+import { trpc } from '@/lib/trpc';
+import { setAuthToken, setUserData } from '@/utils/auth';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -30,24 +33,44 @@ export default function LoginScreen() {
   const [loginMode, setLoginMode] = useState<'user' | 'admin'>('user');
   const [isLoading, setIsLoading] = useState(false);
 
+  const loginMutation = trpc.auth.login.useMutation();
+
   const handleLogin = useCallback(async () => {
+    if (!email || !password) {
+      Alert.alert('Error', 'Please enter both email and password');
+      return;
+    }
+
     try {
       setIsLoading(true);
       console.log('Logging in with:', { email, loginMode });
-      await AsyncStorage.setItem('@user_mode', 'client');
+
+      const result = await loginMutation.mutateAsync({
+        email,
+        password,
+      });
+
+      await setAuthToken(result.token);
+      await setUserData(result.user);
+      await AsyncStorage.setItem('@user_mode', result.user.role === 'admin' ? 'admin' : 'client');
+
+      console.log('Login successful:', result.user);
       
-      if (loginMode === 'admin') {
+      if (loginMode === 'admin' || result.user.role === 'admin') {
         await enableSuperAdmin();
         router.replace('/admin/dashboard' as any);
+      } else if (result.user.role === 'agent' || result.user.role === 'agency') {
+        router.replace('/agent/dashboard' as any);
       } else {
         router.replace('/(tabs)/home' as any);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
+      Alert.alert('Login Failed', error.message || 'Invalid email or password');
     } finally {
       setIsLoading(false);
     }
-  }, [email, loginMode, router, enableSuperAdmin]);
+  }, [email, password, loginMode, router, enableSuperAdmin, loginMutation]);
 
   const handleSkipLogin = () => {
     router.replace('/(tabs)/home' as any);
