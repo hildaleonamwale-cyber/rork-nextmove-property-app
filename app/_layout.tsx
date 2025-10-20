@@ -7,6 +7,7 @@ import { UserModeProvider } from "@/contexts/UserModeContext";
 import { AgentProfileProvider } from "@/contexts/AgentProfileContext";
 import { SuperAdminProvider } from "@/contexts/SuperAdminContext";
 import { BookingProvider } from "@/contexts/BookingContext";
+import { trpc, trpcClient } from "@/lib/trpc";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -52,18 +53,20 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <SuperAdminProvider>
-        <UserModeProvider>
-          <AgentProfileProvider>
-            <BookingProvider>
-              <GestureHandlerRootView style={{ flex: 1 }}>
-                <RootLayoutNav />
-              </GestureHandlerRootView>
-            </BookingProvider>
-          </AgentProfileProvider>
-        </UserModeProvider>
-      </SuperAdminProvider>
-    </QueryClientProvider>
+    <trpc.Provider client={trpcClient} queryClient={queryClient}>
+      <QueryClientProvider client={queryClient}>
+        <SuperAdminProvider>
+          <UserModeProvider>
+            <AgentProfileProvider>
+              <BookingProvider>
+                <GestureHandlerRootView style={{ flex: 1 }}>
+                  <RootLayoutNav />
+                </GestureHandlerRootView>
+              </BookingProvider>
+            </AgentProfileProvider>
+          </UserModeProvider>
+        </SuperAdminProvider>
+      </QueryClientProvider>
+    </trpc.Provider>
   );
 }
