@@ -30,17 +30,17 @@ export default function PropertyManagement() {
   const insets = useSafeAreaInsets();
   
   const [searchQuery, setSearchQuery] = useState('');
-  const { data: propertiesData, isLoading } = trpc.properties.listProperties.useQuery({
+  const { data: propertiesData, isLoading } = trpc.properties.list.useQuery({
     limit: 1000,
     offset: 0,
   });
-  const deletePropertyMutation = trpc.properties.deleteProperty.useMutation();
+  const deletePropertyMutation = trpc.properties.delete.useMutation();
   const utils = trpc.useUtils();
 
   const properties = propertiesData?.properties || [];
 
   const filteredProperties = useMemo(() => {
-    return properties.filter((property) => {
+    return properties.filter((property: any) => {
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         if (
@@ -66,8 +66,8 @@ export default function PropertyManagement() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await deletePropertyMutation.mutateAsync({ propertyId });
-              await utils.properties.listProperties.invalidate();
+              await deletePropertyMutation.mutateAsync({ id: propertyId });
+              await utils.properties.list.invalidate();
             } catch (error) {
               Alert.alert('Error', 'Failed to delete property');
               console.error('Failed to delete property:', error);
@@ -128,7 +128,7 @@ export default function PropertyManagement() {
           </View>
         ) : (
         <View style={styles.section}>
-          {filteredProperties.map((property) => (
+          {filteredProperties.map((property: any) => (
             <View key={property.id} style={styles.propertyCard}>
               {property.images && property.images.length > 0 && (
                 <Image source={{ uri: property.images[0] }} style={styles.propertyImage} />
