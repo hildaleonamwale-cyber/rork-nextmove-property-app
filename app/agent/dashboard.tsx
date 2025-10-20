@@ -27,14 +27,35 @@ import {
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
-import { useAgentProfile } from '@/contexts/AgentProfileContext';
+import { useAgent } from '@/contexts/AgentContext';
 import { useUserMode } from '@/contexts/UserModeContext';
+import { trpc } from '@/lib/trpc';
 
 export default function AgentDashboardScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { profile, hasFeature, propertyDrafts, upgradePackage } = useAgentProfile();
+  const { profile, hasFeature, upgradePackage } = useAgent();
+  const analyticsQuery = trpc.agents.getAnalytics.useQuery(undefined, {
+    enabled: !!profile,
+  });
+  const propertiesQuery = trpc.properties.list.useQuery(
+    { agentId: profile?.id },
+    { enabled: !!profile?.id }
+  );
   const { switchMode } = useUserMode();
+
+  const analytics = analyticsQuery.data;
+  const properties = propertiesQuery.data?.properties || [];
+
+  if (!profile) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <Text style={styles.emptyStateText}>Loading...</Text>
+        </View>
+      </View>
+    );
+  }
 
   const getPackageColor = () => {
     switch (profile.package) {
@@ -129,21 +150,21 @@ export default function AgentDashboardScreen() {
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
             <Eye size={24} color={Colors.primary} />
-            <Text style={styles.statValue}>{profile.analytics.views.thisMonth}</Text>
+            <Text style={styles.statValue}>{analytics?.views.thisMonth || 0}</Text>
             <Text style={styles.statLabel}>Profile Views</Text>
             <View style={styles.trendContainer}>
               <TrendingUp size={14} color='#10B981' />
-              <Text style={styles.trendText}>+{profile.analytics.views.trend}%</Text>
+              <Text style={styles.trendText}>+{analytics?.views.trend || 0}%</Text>
             </View>
           </View>
 
           <View style={styles.statCard}>
             <MessageSquare size={24} color={Colors.accent} />
-            <Text style={styles.statValue}>{profile.analytics.inquiries.thisMonth}</Text>
+            <Text style={styles.statValue}>{analytics?.inquiries.thisMonth || 0}</Text>
             <Text style={styles.statLabel}>Inquiries</Text>
             <View style={styles.trendContainer}>
               <TrendingUp size={14} color='#10B981' />
-              <Text style={styles.trendText}>+{profile.analytics.inquiries.trend}%</Text>
+              <Text style={styles.trendText}>+{analytics?.inquiries.trend || 0}%</Text>
             </View>
           </View>
         </View>
@@ -156,17 +177,17 @@ export default function AgentDashboardScreen() {
             </View>
             <View style={styles.analyticsRow}>
               <View style={styles.analyticsItem}>
-                <Text style={styles.analyticsValue}>{profile.analytics.bookings.total}</Text>
+                <Text style={styles.analyticsValue}>{analytics?.bookings.total || 0}</Text>
                 <Text style={styles.analyticsLabel}>Total Bookings</Text>
               </View>
               <View style={styles.analyticsDivider} />
               <View style={styles.analyticsItem}>
-                <Text style={styles.analyticsValue}>{profile.analytics.views.total}</Text>
+                <Text style={styles.analyticsValue}>{analytics?.views.total || 0}</Text>
                 <Text style={styles.analyticsLabel}>Total Views</Text>
               </View>
               <View style={styles.analyticsDivider} />
               <View style={styles.analyticsItem}>
-                <Text style={styles.analyticsValue}>{profile.analytics.inquiries.total}</Text>
+                <Text style={styles.analyticsValue}>{analytics?.inquiries.total || 0}</Text>
                 <Text style={styles.analyticsLabel}>Total Inquiries</Text>
               </View>
             </View>
@@ -297,10 +318,10 @@ export default function AgentDashboardScreen() {
               <Home size={20} color={Colors.primary} />
               <Text style={styles.sectionTitle}>My Properties</Text>
             </View>
-            <Text style={styles.propertyCount}>{propertyDrafts.length}</Text>
+            <Text style={styles.propertyCount}>{properties.length}</Text>
           </View>
 
-          {propertyDrafts.length === 0 ? (
+          {properties.length === 0 ? (
             <View style={styles.emptyState}>
               <Home size={48} color={Colors.text.light} />
               <Text style={styles.emptyStateText}>No properties listed yet</Text>
@@ -313,17 +334,21 @@ export default function AgentDashboardScreen() {
             </View>
           ) : (
             <View style={styles.propertyList}>
-              {propertyDrafts.slice(0, 3).map((property) => (
-                <View key={property.id} style={styles.propertyItem}>
+              {properties.slice(0, 3).map((property: any) => (
+                <TouchableOpacity
+                  key={property.id}
+                  style={styles.propertyItem}
+                  onPress={() => router.push(`/property/${property.id}` as any)}
+                >
                   <Home size={20} color={Colors.primary} />
                   <View style={styles.propertyInfo}>
-                    <Text style={styles.propertyTitle}>{property.title}</Text>
+                    <Text style={styles.propertyTitle}>{property.title || 'Untitled'}</Text>
                     <Text style={styles.propertyMeta}>
                       {property.bedrooms} bed • {property.bathrooms} bath • {property.area} sqm
                     </Text>
                   </View>
                   <Text style={styles.propertyPrice}>${property.price.toLocaleString()}</Text>
-                </View>
+                </TouchableOpacity>
               ))}
             </View>
           )}

@@ -19,14 +19,21 @@ import {
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
-import { useAgentProfile } from '@/contexts/AgentProfileContext';
+import { trpc } from '@/lib/trpc';
 import ManagedPropertyCard from '@/components/ManagedPropertyCard';
 import { ManagedPropertyStatus } from '@/types/property';
 
 export default function PropertyManagementScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { managedProperties, updateManagedProperty } = useAgentProfile();
+  const managedPropertiesQuery = trpc.managedProperties.list.useQuery();
+  const updateMutation = trpc.managedProperties.update.useMutation({
+    onSuccess: () => {
+      managedPropertiesQuery.refetch();
+    },
+  });
+
+  const managedProperties = useMemo(() => managedPropertiesQuery.data || [], [managedPropertiesQuery.data]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<ManagedPropertyStatus | 'All'>('All');
   const [showStatusModal, setShowStatusModal] = useState(false);
@@ -36,26 +43,26 @@ export default function PropertyManagementScreen() {
     let filtered = managedProperties;
 
     if (searchQuery) {
-      filtered = filtered.filter(p => 
+      filtered = filtered.filter((p: any) => 
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.address.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
     if (filterStatus !== 'All') {
-      filtered = filtered.filter(p => p.status === filterStatus);
+      filtered = filtered.filter((p: any) => p.status === filterStatus);
     }
 
-    return filtered.sort((a, b) => 
+    return filtered.sort((a: any, b: any) => 
       new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
     );
   }, [managedProperties, searchQuery, filterStatus]);
 
   const stats = useMemo(() => {
     const total = managedProperties.length;
-    const occupied = managedProperties.filter(p => p.status === 'Occupied').length;
-    const vacant = managedProperties.filter(p => p.status === 'Vacant').length;
-    const listed = managedProperties.filter(p => p.isListed).length;
+    const occupied = managedProperties.filter((p: any) => p.status === 'Occupied').length;
+    const vacant = managedProperties.filter((p: any) => p.status === 'Vacant').length;
+    const listed = managedProperties.filter((p: any) => p.isListed).length;
 
     return { total, occupied, vacant, listed };
   }, [managedProperties]);
@@ -67,7 +74,10 @@ export default function PropertyManagementScreen() {
 
   const updateStatus = async (newStatus: ManagedPropertyStatus) => {
     if (selectedPropertyId) {
-      await updateManagedProperty(selectedPropertyId, { status: newStatus });
+      await updateMutation.mutateAsync({
+        id: selectedPropertyId,
+        status: newStatus,
+      });
       setShowStatusModal(false);
       setSelectedPropertyId(null);
     }
@@ -164,7 +174,7 @@ export default function PropertyManagementScreen() {
                     styles.filterChipText,
                     filterStatus === status && styles.filterChipTextActive
                   ]}>
-                    {status} ({managedProperties.filter(p => p.status === status).length})
+                    {status} ({managedProperties.filter((p: any) => p.status === status).length})
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -172,7 +182,11 @@ export default function PropertyManagementScreen() {
           </ScrollView>
         </View>
 
-        {filteredProperties.length === 0 ? (
+        {managedPropertiesQuery.isLoading ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateText}>Loading properties...</Text>
+          </View>
+        ) : filteredProperties.length === 0 ? (
           <View style={styles.emptyState}>
             <Building2 size={64} color={Colors.text.light} />
             <Text style={styles.emptyStateTitle}>
@@ -195,7 +209,7 @@ export default function PropertyManagementScreen() {
           </View>
         ) : (
           <View style={styles.propertiesList}>
-            {filteredProperties.map((property) => (
+            {filteredProperties.map((property: any) => (
               <ManagedPropertyCard
                 key={property.id}
                 property={property}

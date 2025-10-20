@@ -15,13 +15,13 @@ import { ArrowLeft, Save, Plus, X, ImageIcon } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
-import { useAgentProfile } from '@/contexts/AgentProfileContext';
-import { ManagedProperty, ManagedPropertyStatus, ManagedPropertyType } from '@/types/property';
+import { trpc } from '@/lib/trpc';
+import { ManagedPropertyStatus, ManagedPropertyType } from '@/types/property';
 
 export default function AddManagedPropertyScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { addManagedProperty } = useAgentProfile();
+  const addMutation = trpc.managedProperties.add.useMutation();
 
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
@@ -82,28 +82,28 @@ export default function AddManagedPropertyScreen() {
       return;
     }
 
-    const newProperty: ManagedProperty = {
-      id: Date.now().toString(),
-      name: name.trim(),
-      address: address.trim(),
-      type,
-      status,
-      notes: notes.trim() || undefined,
-      images: selectedImages,
-      documents: [],
-      tenant: tenantName.trim() && tenantPhone.trim() ? {
-        name: tenantName.trim(),
-        phone: tenantPhone.trim(),
-        email: tenantEmail.trim() || undefined,
-        moveInDate: new Date(),
-      } : undefined,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      isListed: false,
-    };
-
-    await addManagedProperty(newProperty);
-    router.back();
+    try {
+      await addMutation.mutateAsync({
+        name: name.trim(),
+        address: address.trim(),
+        type,
+        status,
+        notes: notes.trim() || undefined,
+        images: selectedImages,
+        tenantName: tenantName.trim() || undefined,
+        tenantPhone: tenantPhone.trim() || undefined,
+        tenantEmail: tenantEmail.trim() || undefined,
+        isListed: false,
+      });
+      router.back();
+    } catch (error) {
+      console.error('Failed to add property:', error);
+      if (Platform.OS === 'web') {
+        alert('Failed to add property. Please try again.');
+      } else {
+        Alert.alert('Error', 'Failed to add property. Please try again.');
+      }
+    }
   };
 
   const propertyTypes: ManagedPropertyType[] = ['Residential', 'Commercial'];
