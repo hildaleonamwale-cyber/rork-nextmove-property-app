@@ -39,9 +39,9 @@ export function useSupabaseProperties(filters?: PropertyFilters) {
         .from('properties')
         .select(`
           id, title, description, property_type, listing_category, status,
-          price, listing_type, images, bedrooms, bathrooms, beds, baths, area, address, city, suburb,
-          province, country, coordinates, featured, verified, views, bookings,
-          inquiries, amenities, agent_id, user_id, created_at
+          price, price_type, images, area, area_unit, furnished, parking,
+          amenities, address, city, state, country, zip_code, latitude, longitude,
+          featured, views, inquiries, agent_id, user_id, created_at
         `, { count: 'exact' });
 
       if (filters?.city) {
@@ -64,13 +64,7 @@ export function useSupabaseProperties(filters?: PropertyFilters) {
         query = query.lte('price', filters.maxPrice);
       }
 
-      if (filters?.minBeds !== undefined) {
-        query = query.gte('beds', filters.minBeds);
-      }
-
-      if (filters?.maxBeds !== undefined) {
-        query = query.lte('beds', filters.maxBeds);
-      }
+      // Beds filter removed - property structure varies by type
 
       if (filters?.featured !== undefined) {
         query = query.eq('featured', filters.featured);
@@ -131,9 +125,9 @@ export function useSupabaseProperty(id: string) {
         .from('properties')
         .select(`
           id, title, description, property_type, listing_category, status,
-          price, listing_type, images, bedrooms, bathrooms, beds, baths, area, address, city, suburb,
-          province, country, coordinates, featured, verified, views, bookings,
-          inquiries, amenities, agent_id, user_id, created_at
+          price, price_type, images, area, area_unit, furnished, parking,
+          amenities, address, city, state, country, zip_code, latitude, longitude,
+          featured, views, inquiries, agent_id, user_id, created_at
         `)
         .eq('id', id)
         .single();
@@ -165,28 +159,35 @@ export function useSupabaseProperty(id: string) {
 }
 
 function transformProperty(data: any): Listing {
+  const images = typeof data.images === 'string' ? JSON.parse(data.images) : (data.images || []);
+  const amenities = typeof data.amenities === 'string' ? JSON.parse(data.amenities) : (data.amenities || []);
+  
+  const coordinates = data.latitude && data.longitude 
+    ? { latitude: parseFloat(data.latitude), longitude: parseFloat(data.longitude) }
+    : { latitude: 0, longitude: 0 };
+
   const base = {
     id: data.id,
     title: data.title,
     description: data.description,
     price: data.price,
-    priceType: data.listing_type as 'monthly' | 'sale',
+    priceType: data.price_type as 'monthly' | 'total',
     location: {
       address: data.address || '',
-      area: data.suburb || '',
+      area: data.state || '',
       city: data.city || '',
-      province: data.province || '',
+      province: data.state || '',
       country: data.country || 'Zimbabwe',
-      coordinates: data.coordinates || { latitude: 0, longitude: 0 },
+      coordinates: coordinates,
     },
-    images: data.images || [],
+    images: images,
     area: data.area || 0,
     status: data.status as 'For Rent' | 'For Sale' | 'Internal Management',
-    verified: data.verified || false,
+    verified: false,
     featured: data.featured || false,
     agentId: data.agent_id,
     views: data.views || 0,
-    bookings: data.bookings || 0,
+    bookings: 0,
     inquiries: data.inquiries || 0,
     listingCategory: data.listing_category as any,
     createdAt: data.created_at ? new Date(data.created_at) : undefined,
@@ -195,33 +196,30 @@ function transformProperty(data: any): Listing {
   if (data.listing_category === 'stand') {
     return {
       ...base,
-      priceType: 'sale' as const,
+      priceType: 'total' as const,
       status: 'For Sale' as const,
-      landFeatures: data.amenities || [],
-      titleDeeds: data.title_deeds || false,
-      serviced: data.serviced || false,
-      developerSession: data.developer_session,
+      landFeatures: amenities,
+      titleDeeds: false,
+      serviced: false,
     } as any;
   }
 
   if (data.listing_category === 'commercial') {
     return {
       ...base,
-      floors: data.floors || 1,
-      parkingSpaces: data.parking_spaces || 0,
+      floors: 1,
+      parkingSpaces: data.parking ? 1 : 0,
       commercialType: data.property_type as any,
-      features: data.amenities || [],
-      furnished: data.furnished,
-      yearBuilt: data.year_built,
-      zoning: data.zoning,
+      features: amenities,
+      furnished: data.furnished || false,
     } as any;
   }
 
   return {
     ...base,
-    bedrooms: data.bedrooms || data.beds || 0,
-    bathrooms: data.bathrooms || data.baths || 0,
+    bedrooms: 0,
+    bathrooms: 0,
     propertyType: data.property_type as any,
-    amenities: data.amenities || [],
+    amenities: amenities,
   } as any;
 }

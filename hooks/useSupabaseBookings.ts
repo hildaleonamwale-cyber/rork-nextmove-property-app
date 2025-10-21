@@ -58,8 +58,8 @@ export function useSupabaseBookings(userId?: string, agentId?: string) {
         .from('bookings')
         .select(`
           *,
-          properties(title, images, agent_id, agents(id, user_id, company_name)),
-          users(name, email, phone)
+          properties!inner(title, images, agent_id),
+          users!inner(name, email, phone)
         `)
         .order('created_at', { ascending: false });
 
@@ -102,7 +102,10 @@ export function useSupabaseBookings(userId?: string, agentId?: string) {
       .eq('id', params.propertyId)
       .single();
 
-    if (propertyError) throw new Error('Property not found');
+    if (propertyError) {
+      console.error('Property fetch error:', propertyError);
+      throw new Error('Property not found');
+    }
 
     const { data: user } = await supabase
       .from('users')
@@ -156,14 +159,14 @@ function transformBooking(data: any): Booking {
   return {
     id: data.id,
     propertyId: data.property_id,
-    propertyTitle: data.properties?.title || 'Property',
+    propertyTitle: data.properties?.title || data.property_title || 'Property',
     propertyImage: Array.isArray(images) ? images[0] : '',
     userId: data.user_id,
-    userName: data.users?.name || 'User',
-    userEmail: data.users?.email || '',
-    userPhone: data.users?.phone || '',
-    agentId: data.properties?.agents?.id || '',
-    agentName: data.properties?.agents?.company_name || 'Agent',
+    userName: data.users?.name || data.client_name || 'User',
+    userEmail: data.users?.email || data.client_email || '',
+    userPhone: data.users?.phone || data.client_phone || '',
+    agentId: data.properties?.agent_id || '',
+    agentName: 'Agent',
     visitDate: new Date(data.date),
     visitTime: data.time,
     status: data.status,
