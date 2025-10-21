@@ -18,12 +18,10 @@ export const [UserProvider, useUser] = createContextHook(() => {
       setIsLoading(true);
       setError(null);
       const currentUser = await getCurrentUser(skipCache);
-      console.log('User loaded:', currentUser ? `${currentUser.name} (${currentUser.email})` : 'No user');
       setUser(currentUser);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error('Error loading user:', errorMessage);
-      console.error('Full error:', error);
       setError(errorMessage);
       setUser(null);
     } finally {
