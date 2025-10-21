@@ -17,12 +17,16 @@ interface PropertyFilters {
 
 export function useSupabaseProperties(filters?: PropertyFilters) {
   const [properties, setProperties] = useState<Listing[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
 
   useEffect(() => {
-    fetchProperties();
+    if (filters !== undefined) {
+      fetchProperties();
+    } else {
+      setIsLoading(false);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(filters)]);
 

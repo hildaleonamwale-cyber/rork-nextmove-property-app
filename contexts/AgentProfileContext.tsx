@@ -2,7 +2,6 @@ import { useMemo, useCallback } from 'react';
 import createContextHook from '@nkzw/create-context-hook';
 import { AgentProfile as ImportedAgentProfile, AgentPackage, PropertyDraft, BookingSlot, AgentUpdate, StaffMember as ImportedStaffMember, ManagedProperty as ImportedManagedProperty } from '@/types/property';
 import { useSupabaseAgent, useSupabaseManagedProperties, useSupabaseStaff, StaffMember as SupabaseStaff } from '@/hooks/useSupabaseAgent';
-import { useSupabaseProperties } from '@/hooks/useSupabaseProperties';
 import { useUser } from './UserContext';
 
 export const [AgentProfileProvider, useAgentProfile] = createContextHook(() => {
@@ -10,7 +9,6 @@ export const [AgentProfileProvider, useAgentProfile] = createContextHook(() => {
   const { agent, isLoading: agentLoading, createAgent, updateAgent, refetch: refetchAgent } = useSupabaseAgent(user?.id);
   const { properties: managedProperties, isLoading: managedLoading, createProperty: createManagedProperty, updateProperty: updateManagedProperty, deleteProperty: deleteManagedProperty } = useSupabaseManagedProperties(agent?.id);
   const { staff, isLoading: staffLoading, addStaff: addSupabaseStaff, updateStaff: updateSupabaseStaff, removeStaff: removeSupabaseStaff } = useSupabaseStaff(agent?.id);
-  const { properties: agentProperties } = useSupabaseProperties({ });
 
   const isLoading = userLoading || agentLoading || managedLoading || staffLoading;
 
@@ -36,10 +34,6 @@ export const [AgentProfileProvider, useAgentProfile] = createContextHook(() => {
         profileCards: [],
       };
     }
-
-    const totalViews = agentProperties.reduce((sum, p) => sum + (p.views || 0), 0);
-    const totalInquiries = agentProperties.reduce((sum, p) => sum + (p.inquiries || 0), 0);
-    const totalBookings = agentProperties.reduce((sum, p) => sum + (p.bookings || 0), 0);
 
     return {
       id: agent.id,
@@ -69,23 +63,17 @@ export const [AgentProfileProvider, useAgentProfile] = createContextHook(() => {
       staff: staff.map(transformStaffToLocal),
       bookingSlots: [],
       analytics: {
-        views: { total: totalViews, thisMonth: totalViews, trend: 0 },
-        inquiries: { total: totalInquiries, thisMonth: totalInquiries, trend: 0 },
-        bookings: { total: totalBookings, thisMonth: totalBookings, trend: 0 },
-        propertyViews: agentProperties.map(p => ({
-          propertyId: p.id,
-          propertyTitle: p.title,
-          views: p.views || 0,
-          inquiries: p.inquiries || 0,
-          bookings: p.bookings || 0,
-        })),
+        views: { total: 0, thisMonth: 0, trend: 0 },
+        inquiries: { total: 0, thisMonth: 0, trend: 0 },
+        bookings: { total: 0, thisMonth: 0, trend: 0 },
+        propertyViews: [],
       },
       rating: agent.rating,
       reviewCount: agent.reviewCount,
       verified: user.verified,
       profileCards: [],
     };
-  }, [agent, user, staff, agentProperties]);
+  }, [agent, user, staff]);
 
   const updateProfile = useCallback(async (updates: Partial<ImportedAgentProfile>) => {
     if (!agent) {
