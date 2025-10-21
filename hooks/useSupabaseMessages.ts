@@ -62,7 +62,10 @@ export function useSupabaseConversations(userId: string) {
 
       const { data, error: fetchError } = await supabase
         .from('conversations')
-        .select('*, messages(content, created_at, read, sender_id), properties(title)')
+        .select(`
+          *,
+          properties(title)
+        `)
         .contains('participants', [userId])
         .order('updated_at', { ascending: false });
 
@@ -85,13 +88,21 @@ export function useSupabaseConversations(userId: string) {
             })
           );
 
-          const lastMessage = conv.messages?.sort((a: any, b: any) =>
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-          )[0];
+          const { data: messages } = await supabase
+            .from('messages')
+            .select('content, created_at, read, sender_id')
+            .eq('conversation_id', conv.id)
+            .order('created_at', { ascending: false })
+            .limit(1);
 
-          const unreadCount = conv.messages?.filter(
-            (m: any) => m.sender_id !== userId && !m.read
-          ).length || 0;
+          const lastMessage = messages?.[0];
+
+          const { count: unreadCount } = await supabase
+            .from('messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('conversation_id', conv.id)
+            .neq('sender_id', userId)
+            .eq('read', false);
 
           return {
             id: conv.id,
@@ -100,9 +111,9 @@ export function useSupabaseConversations(userId: string) {
             participantAvatars: participantData.map((p) => p?.avatar || ''),
             lastMessage: lastMessage?.content || '',
             lastMessageTime: lastMessage ? new Date(lastMessage.created_at) : new Date(),
-            unreadCount,
+            unreadCount: unreadCount || 0,
             propertyId: conv.property_id,
-            propertyTitle: conv.properties?.title,
+            propertyTitle: (conv as any).properties?.title,
           };
         })
       );

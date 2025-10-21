@@ -25,7 +25,7 @@ export function useSupabaseWishlist(userId: string) {
           property_id,
           properties(
             id, title, description, property_type, listing_category, status,
-            price, listing_type, images, beds, baths, area, address, city, suburb,
+            price, price_type, images, beds, baths, area, address, city, suburb,
             province, country, coordinates, featured, verified, views, bookings,
             inquiries, amenities, agent_id, user_id, created_at
           )
@@ -101,7 +101,7 @@ function transformProperty(data: any): Listing | null {
     title: data.title,
     description: data.description,
     price: data.price,
-    priceType: data.listing_type as 'monthly' | 'sale',
+    priceType: data.price_type as 'monthly' | 'sale',
     location: {
       address: data.address || '',
       area: data.suburb || '',
