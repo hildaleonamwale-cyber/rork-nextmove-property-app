@@ -86,12 +86,14 @@ export const [SuperAdminProvider, useSuperAdmin] = createContextHook(() => {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   useEffect(() => {
+    const allowedEmails = ['support@nextmove.co.zw', 'hildaleonamwale@gmail.com'];
+    
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setIsSuperAdmin(session?.user?.email === 'support@nextmove.co.zw');
+      setIsSuperAdmin(allowedEmails.includes(session?.user?.email || ''));
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-      setIsSuperAdmin(session?.user?.email === 'support@nextmove.co.zw');
+      setIsSuperAdmin(allowedEmails.includes(session?.user?.email || ''));
     });
 
     return () => {
