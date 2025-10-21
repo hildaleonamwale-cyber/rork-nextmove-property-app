@@ -308,7 +308,7 @@ export async function uploadAvatar(base64Image: string): Promise<string> {
     throw new Error('Not authenticated. Please log in again.');
   }
 
-  const fileName = `${session.user.id}-${Date.now()}.jpg`;
+  const fileName = `${session.user.id}/avatar-${Date.now()}.jpg`;
   const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '');
   
   const { error: uploadError } = await supabase.storage
