@@ -15,14 +15,18 @@ import { X, Home, DollarSign, MapPin, Bed, Bath, Ruler, ImageIcon, Plus, Car, Wa
 import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
-import { useAgentProfile } from '@/contexts/AgentProfileContext';
+import { useAgent } from '@/contexts/AgentContext';
+import { supabase } from '@/lib/supabase';
+import SuccessPrompt from '@/components/SuccessPrompt';
 import { PropertyDraft } from '@/types/property';
 import { PROVINCES, getCitiesByProvince, Province } from '@/constants/locations';
 
 export default function AddPropertyScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { addPropertyDraft } = useAgentProfile();
+  const { profile } = useAgent();
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -97,31 +101,66 @@ export default function AddPropertyScreen() {
   };
 
   const handleSave = async () => {
-    const draft: PropertyDraft = {
-      id: Date.now().toString(),
-      title: formData.title,
-      description: formData.description,
-      price: parseFloat(formData.price) || 0,
-      priceType: formData.priceType,
-      location: {
-        address: formData.address,
-        area: formData.area,
-        city: formData.city,
-        province: formData.province,
-        country: formData.country,
-      },
-      images: selectedImages,
-      bedrooms: parseInt(formData.bedrooms) || 0,
-      bathrooms: parseInt(formData.bathrooms) || 0,
-      area: parseFloat(formData.propertyArea) || 0,
-      propertyType: 'apartment' as any,
-      status: formData.status,
-      amenities: selectedFacilities,
-      tags: selectedTags,
-    };
+    if (!profile?.id || !profile?.userId) {
+      Alert.alert('Error', 'Please complete agent onboarding first');
+      return;
+    }
 
-    await addPropertyDraft(draft);
-    router.back();
+    try {
+      setIsSubmitting(true);
+      console.log('Creating property for agent:', profile.id);
+
+      const propertyData = {
+        agent_id: profile.id,
+        user_id: profile.userId,
+        title: formData.title,
+        description: formData.description,
+        property_type: formData.propertyType,
+        listing_category: 'property',
+        status: formData.status,
+        price: parseFloat(formData.price) || 0,
+        price_type: formData.priceType === 'sale' ? 'total' : 'monthly',
+        images: JSON.stringify(selectedImages),
+        bedrooms: parseInt(formData.bedrooms) || 0,
+        bathrooms: parseInt(formData.bathrooms) || 0,
+        area: parseFloat(formData.propertyArea) || 0,
+        area_unit: 'sqm',
+        furnished: selectedFacilities.includes('Furnished'),
+        parking: selectedFacilities.includes('Garage') || selectedFacilities.includes('Parking Available'),
+        amenities: JSON.stringify([...selectedFacilities, ...selectedTags]),
+        address: formData.address,
+        city: formData.city,
+        state: formData.province,
+        country: formData.country,
+        featured: false,
+        views: 0,
+        inquiries: 0,
+      };
+
+      console.log('Property data:', propertyData);
+
+      const { data, error } = await supabase
+        .from('properties')
+        .insert(propertyData)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Property creation error:', error);
+        throw new Error(error.message);
+      }
+
+      console.log('Property created successfully:', data);
+      setShowSuccess(true);
+      setTimeout(() => {
+        router.back();
+      }, 1500);
+    } catch (error: any) {
+      console.error('Failed to create property:', error);
+      Alert.alert('Error', error.message || 'Failed to create property');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const canSave = formData.title.trim() && formData.price && formData.city && formData.province;
@@ -419,13 +458,20 @@ export default function AddPropertyScreen() {
 
       <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.saveButton, !canSave && styles.saveButtonDisabled]}
+          style={[styles.saveButton, (!canSave || isSubmitting) && styles.saveButtonDisabled]}
           onPress={handleSave}
-          disabled={!canSave}
+          disabled={!canSave || isSubmitting}
         >
-          <Text style={styles.saveButtonText}>Save Property</Text>
+          <Text style={styles.saveButtonText}>
+            {isSubmitting ? 'Creating...' : 'Save Property'}
+          </Text>
         </TouchableOpacity>
       </View>
+      <SuccessPrompt
+        visible={showSuccess}
+        message="Property Listed Successfully!"
+        onClose={() => setShowSuccess(false)}
+      />
     </View>
   );
 }

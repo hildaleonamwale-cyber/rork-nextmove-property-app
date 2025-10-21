@@ -52,33 +52,6 @@ export default function BookingsScreen() {
   const [selectedPropertyName, setSelectedPropertyName] = useState('');
   const [rescheduleDate, setRescheduleDate] = useState(new Date());
 
-  const mockBookings: Booking[] = [
-    {
-      id: '1',
-      propertyName: 'Luxury Penthouse',
-      location: 'Downtown, City Center',
-      date: 'Tuesday, Dec 19',
-      time: '2:00 PM',
-      status: 'upcoming',
-    },
-    {
-      id: '2',
-      propertyName: 'Modern Villa',
-      location: 'Suburbs, Green Valley',
-      date: 'Monday, Dec 18',
-      time: '10:00 AM',
-      status: 'completed',
-    },
-    {
-      id: '3',
-      propertyName: 'Beachfront Condo',
-      location: 'Coastal, Ocean View',
-      date: 'Sunday, Dec 17',
-      time: '4:00 PM',
-      status: 'cancelled',
-    },
-  ];
-
   const bookings = (bookingsData?.bookings || []).map(b => ({
     id: b.id,
     propertyName: b.propertyTitle || 'Property',
@@ -92,9 +65,7 @@ export default function BookingsScreen() {
     status: b.status as 'upcoming' | 'completed' | 'cancelled',
   }));
 
-  const displayBookings = bookings.length > 0 ? bookings : mockBookings;
-
-  const filteredBookings = displayBookings.filter(booking =>
+  const filteredBookings = bookings.filter(booking =>
     selectedTab === 'upcoming' ? booking.status === 'upcoming' : booking.status !== 'upcoming'
   );
 

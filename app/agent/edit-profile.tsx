@@ -15,34 +15,37 @@ import { ArrowLeft, User, Building2, Globe, Mail, Phone, MapPin, Eye, Camera, Im
 import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
-import { useAgentProfile } from '@/contexts/AgentProfileContext';
+import { useAgent } from '@/contexts/AgentContext';
+import SuccessPrompt from '@/components/SuccessPrompt';
 import { ProfileCard } from '@/types/property';
 import { mockProperties } from '@/mocks/properties';
 
 export default function EditProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { profile, updateProfile } = useAgentProfile();
+  const { profile, updateProfile } = useAgent();
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [showPreview, setShowPreview] = useState(false);
   const [formData, setFormData] = useState({
-    companyName: profile.companyName || '',
-    bio: profile.bio || '',
-    phone: profile.phone || '',
-    email: profile.email || '',
-    website: profile.website || '',
-    address: profile.address || '',
-    specialties: profile.specialties || [],
+    companyName: profile?.companyName || '',
+    bio: profile?.bio || '',
+    phone: profile?.phone || '',
+    email: profile?.email || '',
+    website: profile?.website || '',
+    address: profile?.address || '',
+    specialties: profile?.specialties || [],
     socialMedia: {
-      linkedin: profile.socialMedia?.linkedin || '',
-      twitter: profile.socialMedia?.twitter || '',
-      instagram: profile.socialMedia?.instagram || '',
-      facebook: profile.socialMedia?.facebook || '',
+      linkedin: profile?.socialMedia?.linkedin || '',
+      twitter: profile?.socialMedia?.twitter || '',
+      instagram: profile?.socialMedia?.instagram || '',
+      facebook: profile?.socialMedia?.facebook || '',
     },
   });
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [bannerImage, setBannerImage] = useState<string | null>(null);
-  const [profileCards, setProfileCards] = useState<ProfileCard[]>(profile.profileCards || []);
+  const [profileCards, setProfileCards] = useState<ProfileCard[]>([]);
   const [editingCard, setEditingCard] = useState<ProfileCard | null>(null);
   const [showCardModal, setShowCardModal] = useState(false);
 
@@ -109,8 +112,31 @@ export default function EditProfileScreen() {
   };
 
   const handleSave = async () => {
-    await updateProfile({ ...formData, profileCards });
-    router.back();
+    try {
+      setIsSubmitting(true);
+      console.log('Updating agent profile with:', formData);
+      
+      await updateProfile({
+        companyName: formData.companyName,
+        bio: formData.bio,
+        phone: formData.phone,
+        email: formData.email,
+        website: formData.website,
+        address: formData.address,
+        specialties: formData.specialties,
+        socialMedia: formData.socialMedia,
+      });
+      
+      setShowSuccess(true);
+      setTimeout(() => {
+        router.back();
+      }, 1500);
+    } catch (error: any) {
+      console.error('Failed to update profile:', error);
+      Alert.alert('Error', error.message || 'Failed to update profile');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const addCard = () => {
@@ -390,7 +416,7 @@ export default function EditProfileScreen() {
               </View>
             </View>
 
-            {profile.package === 'agency' && (
+            {profile?.package === 'agency' && (
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                   <ImageIcon size={20} color={Colors.primary} />
@@ -476,8 +502,14 @@ export default function EditProfileScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-          <Text style={styles.saveButtonText}>Save Changes</Text>
+        <TouchableOpacity 
+          style={[styles.saveButton, isSubmitting && styles.saveButtonDisabled]} 
+          onPress={handleSave}
+          disabled={isSubmitting}
+        >
+          <Text style={styles.saveButtonText}>
+            {isSubmitting ? 'Saving...' : 'Save Changes'}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -627,6 +659,12 @@ export default function EditProfileScreen() {
           </View>
         </View>
       )}
+      
+      <SuccessPrompt
+        visible={showSuccess}
+        message="Profile Updated Successfully!"
+        onClose={() => setShowSuccess(false)}
+      />
     </View>
   );
 }
@@ -895,6 +933,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
+  },
+  saveButtonDisabled: {
+    backgroundColor: Colors.gray[300],
+    shadowOpacity: 0,
+    elevation: 0,
   },
   saveButtonText: {
     fontSize: 16,

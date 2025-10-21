@@ -63,7 +63,6 @@ export default function AccountScreen() {
       title: 'Account',
       items: [
         { icon: User, label: 'Personal Information', color: Colors.primary, route: '/account/personal-info' },
-        { icon: CreditCard, label: 'Payment Methods', color: '#10B981', route: '/account/payment' },
       ],
     },
     {
