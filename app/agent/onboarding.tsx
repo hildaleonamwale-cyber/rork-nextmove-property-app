@@ -59,13 +59,23 @@ export default function AgentOnboardingScreen() {
 
   const handleComplete = async () => {
     try {
+      console.log('Starting onboarding completion...');
+      console.log('Form data:', formData);
+      
       await updateProfile(formData);
+      console.log('Profile updated');
+      
       await completeOnboarding();
+      console.log('Onboarding completed');
+      
       await refetchUser();
+      console.log('User refetched');
+      
+      Alert.alert('Success', 'Agent profile created successfully!');
       router.replace('/agent/dashboard' as any);
     } catch (error) {
       console.error('Failed to complete onboarding:', error);
-      Alert.alert('Error', 'Failed to complete setup. Please try again.');
+      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to complete setup. Please try again.');
     }
   };
 

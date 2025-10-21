@@ -115,9 +115,29 @@ export function useSupabaseAgent(userId?: string) {
     linkedin?: string;
   }) => {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) throw new Error('Not authenticated');
+    if (!session) {
+      console.error('No session found when creating agent profile');
+      throw new Error('Not authenticated');
+    }
 
-    const { error } = await supabase.from('agents').insert({
+    console.log('Creating agent profile for user:', session.user.id);
+    console.log('Agent data:', params);
+
+    const { data: roleUpdate, error: roleError } = await supabase
+      .from('users')
+      .update({ role: 'agent' })
+      .eq('id', session.user.id)
+      .select()
+      .single();
+
+    if (roleError) {
+      console.error('Failed to update user role:', roleError);
+      throw new Error('Failed to update user role: ' + roleError.message);
+    }
+
+    console.log('User role updated:', roleUpdate);
+
+    const { data: agentData, error } = await supabase.from('agents').insert({
       user_id: session.user.id,
       company_name: params.companyName,
       bio: params.bio,
@@ -133,18 +153,15 @@ export function useSupabaseAgent(userId?: string) {
       package_level: 'free',
       rating: 0,
       review_count: 0,
-    });
+    }).select().single();
 
     if (error) {
       console.error('Create agent error:', error);
-      throw new Error(error.message);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      throw new Error('Cannot create agent profile: ' + error.message);
     }
 
-    await supabase
-      .from('users')
-      .update({ role: 'agent' })
-      .eq('id', session.user.id);
-
+    console.log('Agent profile created:', agentData);
     await fetchAgent();
   };
 

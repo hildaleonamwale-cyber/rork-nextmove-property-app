@@ -235,6 +235,10 @@ export async function updateProfile(updates: { name?: string; phone?: string }):
   return user;
 }
 
+export async function clearUserCache(): Promise<void> {
+  await AsyncStorage.removeItem(USER_PROFILE_KEY);
+}
+
 export async function uploadAvatar(base64Image: string): Promise<string> {
   const { data: { session } } = await supabase.auth.getSession();
 

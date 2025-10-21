@@ -42,18 +42,21 @@ export const [UserModeProvider, useUserMode] = createContextHook(() => {
 
   const switchMode = useCallback(async (newMode: UserMode) => {
     try {
+      console.log('Attempting to switch to', newMode, 'mode');
+      console.log('isAgent:', isAgent);
+      console.log('user:', user);
+      
       if (newMode === 'agent' && !isAgent) {
-        console.error('Cannot switch to agent mode - user is not an agent');
-        return;
+        console.log('User is not an agent yet, but will allow mode switch for onboarding');
       }
       
       await AsyncStorage.setItem(USER_MODE_KEY, newMode);
       setMode(newMode);
-      console.log('Switched to', newMode, 'mode');
+      console.log('Successfully switched to', newMode, 'mode');
     } catch (error) {
       console.error('Failed to switch mode:', error);
     }
-  }, [isAgent]);
+  }, [isAgent, user]);
 
   const isClient = mode === 'client';
   const isAgentMode = mode === 'agent';
