@@ -102,6 +102,27 @@ export const [AgentProvider, useAgent] = createContextHook(() => {
     if (user?.id && isAgent) {
       console.log('Fetching agent profile for user:', user.id, 'isAgent:', isAgent);
       fetchProfile();
+
+      const subscription = supabase
+        .channel(`agent_profile_${user.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'agents',
+            filter: `user_id=eq.${user.id}`,
+          },
+          () => {
+            console.log('Agent profile changed, refetching...');
+            fetchProfile();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        subscription.unsubscribe();
+      };
     } else {
       console.log('Not fetching agent profile - user:', user?.id, 'isAgent:', isAgent);
       setProfile(null);

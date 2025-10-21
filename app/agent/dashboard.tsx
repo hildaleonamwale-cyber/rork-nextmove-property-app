@@ -29,7 +29,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
 import { useAgent } from '@/contexts/AgentContext';
 import { useUserMode } from '@/contexts/UserModeContext';
-import { useSupabaseProperties } from '@/hooks/useSupabaseProperties';
 import { supabase } from '@/lib/supabase';
 
 export default function AgentDashboardScreen() {
@@ -40,14 +39,7 @@ export default function AgentDashboardScreen() {
   const [properties, setProperties] = React.useState<any[]>([]);
   const [analytics, setAnalytics] = React.useState<any>(null);
 
-  React.useEffect(() => {
-    if (profile?.userId) {
-      fetchAnalytics();
-      fetchProperties();
-    }
-  }, [profile?.userId]);
-
-  const fetchProperties = async () => {
+  const fetchProperties = React.useCallback(async () => {
     if (!profile?.userId) return;
 
     const { data } = await supabase
@@ -58,9 +50,9 @@ export default function AgentDashboardScreen() {
       .order('created_at', { ascending: false });
 
     setProperties(data || []);
-  };
+  }, [profile?.userId]);
 
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = React.useCallback(async () => {
     if (!profile?.userId) return;
 
     const { data: propertiesData } = await supabase
@@ -89,7 +81,36 @@ export default function AgentDashboardScreen() {
         trend: 15,
       },
     });
-  };
+  }, [profile?.userId]);
+
+  React.useEffect(() => {
+    if (profile?.userId) {
+      fetchAnalytics();
+      fetchProperties();
+
+      const subscription = supabase
+        .channel(`agent_properties_${profile.userId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'properties',
+            filter: `agent_id=eq.${profile.userId}`,
+          },
+          () => {
+            console.log('Agent properties changed, refetching...');
+            fetchProperties();
+            fetchAnalytics();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        subscription.unsubscribe();
+      };
+    }
+  }, [profile?.userId, fetchProperties, fetchAnalytics]);
 
   if (!profile) {
     return (
