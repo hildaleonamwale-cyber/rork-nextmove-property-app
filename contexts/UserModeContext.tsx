@@ -15,22 +15,28 @@ export const [UserModeProvider, useUserMode] = createContextHook(() => {
   useEffect(() => {
     loadMode();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user?.role, isAgent]);
 
   const loadMode = async () => {
     try {
-      const storedMode = await AsyncStorage.getItem(USER_MODE_KEY);
+      setIsLoading(true);
       
-      if (user && isAgent) {
-        if (storedMode === 'client' || storedMode === 'agent') {
-          setMode(storedMode);
+      if (user) {
+        if (isAgent) {
+          const storedMode = await AsyncStorage.getItem(USER_MODE_KEY);
+          if (storedMode === 'client' || storedMode === 'agent') {
+            setMode(storedMode);
+          } else {
+            setMode('agent');
+            await AsyncStorage.setItem(USER_MODE_KEY, 'agent');
+          }
         } else {
-          setMode('agent');
-          await AsyncStorage.setItem(USER_MODE_KEY, 'agent');
+          setMode('client');
+          await AsyncStorage.setItem(USER_MODE_KEY, 'client');
         }
       } else {
-        setMode('client');
-        await AsyncStorage.setItem(USER_MODE_KEY, 'client');
+        const storedMode = await AsyncStorage.getItem(USER_MODE_KEY);
+        setMode((storedMode === 'agent' || storedMode === 'client') ? storedMode : 'client');
       }
     } catch (error) {
       console.error('Failed to load user mode:', error);
@@ -47,7 +53,7 @@ export const [UserModeProvider, useUserMode] = createContextHook(() => {
       console.log('user:', user);
       
       if (newMode === 'agent' && !isAgent) {
-        console.log('User is not an agent yet, but will allow mode switch for onboarding');
+        console.warn('User is not an agent yet, but allowing mode switch for onboarding flow');
       }
       
       await AsyncStorage.setItem(USER_MODE_KEY, newMode);
@@ -55,6 +61,7 @@ export const [UserModeProvider, useUserMode] = createContextHook(() => {
       console.log('Successfully switched to', newMode, 'mode');
     } catch (error) {
       console.error('Failed to switch mode:', error);
+      throw error;
     }
   }, [isAgent, user]);
 

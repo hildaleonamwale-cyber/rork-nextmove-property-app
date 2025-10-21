@@ -7,6 +7,7 @@ export type User = SupabaseUser;
 export const [UserProvider, useUser] = createContextHook(() => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadUser();
@@ -15,11 +16,13 @@ export const [UserProvider, useUser] = createContextHook(() => {
   const loadUser = async (skipCache: boolean = false) => {
     try {
       setIsLoading(true);
+      setError(null);
       const currentUser = await getCurrentUser(skipCache);
       setUser(currentUser);
     } catch (error) {
-      console.error('Error fetching user profile:', error);
-      console.error('Failed to fetch user profile:', error instanceof Error ? error.message : String(error));
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Error loading user:', errorMessage);
+      setError(errorMessage);
       setUser(null);
     } finally {
       setIsLoading(false);
@@ -28,25 +31,42 @@ export const [UserProvider, useUser] = createContextHook(() => {
 
   const updateProfile = useCallback(
     async (updates: { name?: string; phone?: string }) => {
-      const updatedUser = await updateProfileSupabase(updates);
-      setUser(updatedUser);
+      try {
+        setError(null);
+        const updatedUser = await updateProfileSupabase(updates);
+        setUser(updatedUser);
+        return updatedUser;
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Failed to update profile';
+        console.error('Update profile error:', errorMessage);
+        setError(errorMessage);
+        throw error;
+      }
     },
     []
   );
 
   const uploadAvatar = useCallback(
     async (base64Image: string) => {
-      const avatarUrl = await uploadAvatarSupabase(base64Image);
-      if (user) {
-        setUser({ ...user, avatar: avatarUrl });
+      try {
+        setError(null);
+        const avatarUrl = await uploadAvatarSupabase(base64Image);
+        if (user) {
+          setUser({ ...user, avatar: avatarUrl });
+        }
+        return avatarUrl;
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Failed to upload avatar';
+        console.error('Upload avatar error:', errorMessage);
+        setError(errorMessage);
+        throw error;
       }
-      return avatarUrl;
     },
     [user]
   );
 
   const refetch = useCallback((skipCache: boolean = true) => {
-    loadUser(skipCache);
+    return loadUser(skipCache);
   }, []);
 
   const isClient = user?.role === "client";
@@ -58,6 +78,7 @@ export const [UserProvider, useUser] = createContextHook(() => {
     () => ({
       user,
       isLoading,
+      error,
       updateProfile,
       uploadAvatar,
       refetch,
@@ -69,6 +90,7 @@ export const [UserProvider, useUser] = createContextHook(() => {
     [
       user,
       isLoading,
+      error,
       updateProfile,
       uploadAvatar,
       refetch,

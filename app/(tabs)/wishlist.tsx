@@ -7,14 +7,13 @@ import {
   TouchableOpacity,
   Image,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { MapPin, Home as HomeIcon, Bath, Heart, Calendar, Building2, Sparkles } from 'lucide-react-native';
+import { MapPin, Home as HomeIcon, Bath, Heart, Building2 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { DesignSystem } from '@/constants/designSystem';
 import UniformHeader from '@/components/UniformHeader';
-import SectionHeader from '@/components/SectionHeader';
-import { mockProperties, mockAgencies } from '@/mocks/properties';
 import { useSupabaseWishlist } from '@/hooks/useSupabaseWishlist';
 import { useUser } from '@/contexts/UserContext';
 
@@ -24,15 +23,16 @@ export default function WishlistScreen() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>('wishlist');
   const { user } = useUser();
-  const { wishlist, removeFromWishlist } = useSupabaseWishlist(user?.id || '');
-  const [followedAgencies, setFollowedAgencies] = useState<Set<string>>(new Set([mockAgencies[0]?.id].filter(Boolean)));
+  const { wishlist, removeFromWishlist, isLoading, error } = useSupabaseWishlist(user?.id || '');
 
   const favoriteProperties = wishlist;
-  
-  const followedAgenciesList = mockAgencies.filter(a => followedAgencies.has(a.id));
 
   const removeFavorite = async (id: string) => {
-    await removeFromWishlist(id);
+    try {
+      await removeFromWishlist(id);
+    } catch (error) {
+      console.error('Failed to remove from wishlist:', error);
+    }
   };
 
   return (
@@ -63,182 +63,113 @@ export default function WishlistScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {activeTab === 'wishlist' && favoriteProperties.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <View style={styles.emptyIconContainer}>
-              <Heart size={64} color="#E2E8F0" strokeWidth={1.5} />
+        {activeTab === 'wishlist' ? (
+          isLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={Colors.primary} />
+              <Text style={styles.loadingText}>Loading wishlist...</Text>
             </View>
-            <Text style={styles.emptyTitle}>No Saved Properties</Text>
-            <Text style={styles.emptyDescription}>
-              Properties you save will appear here. Start exploring and save your favorites!
-            </Text>
-            <TouchableOpacity 
-              style={styles.exploreButton}
-              onPress={() => router.push('/(tabs)/home' as any)}
-            >
-              <Text style={styles.exploreButtonText}>Explore Properties</Text>
-            </TouchableOpacity>
-          </View>
-        ) : activeTab === 'wishlist' ? (
-          <View style={styles.propertiesContainer}>
-            <View style={styles.propertiesList}>
-              {favoriteProperties.map((property) => (
-                <TouchableOpacity
-                  key={property.id}
-                  style={styles.propertyCard}
-                  onPress={() => router.push({ pathname: '/property/[id]' as any, params: { id: property.id } })}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.propertyImageContainer}>
-                    <Image 
-                      source={{ uri: property.images[0] }} 
-                      style={styles.propertyImage}
-                    />
-                    <TouchableOpacity
-                      style={styles.favoriteButton}
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        removeFavorite(property.id);
-                      }}
-                    >
-                      <Heart
-                        size={18}
-                        color="#EF4444"
-                        fill="#EF4444"
-                        strokeWidth={2}
+          ) : error ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.errorText}>Error: {error}</Text>
+            </View>
+          ) : favoriteProperties.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyIconContainer}>
+                <Heart size={64} color="#E2E8F0" strokeWidth={1.5} />
+              </View>
+              <Text style={styles.emptyTitle}>No Saved Properties</Text>
+              <Text style={styles.emptyDescription}>
+                Properties you save will appear here. Start exploring and save your favorites!
+              </Text>
+              <TouchableOpacity 
+                style={styles.exploreButton}
+                onPress={() => router.push('/(tabs)/home' as any)}
+              >
+                <Text style={styles.exploreButtonText}>Explore Properties</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.propertiesContainer}>
+              <View style={styles.propertiesList}>
+                {favoriteProperties.map((property) => (
+                  <TouchableOpacity
+                    key={property.id}
+                    style={styles.propertyCard}
+                    onPress={() => router.push({ pathname: '/property/[id]' as any, params: { id: property.id } })}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.propertyImageContainer}>
+                      <Image 
+                        source={{ uri: property.images[0] }} 
+                        style={styles.propertyImage}
                       />
-                    </TouchableOpacity>
-                  </View>
-
-                  <View style={styles.propertyInfo}>
-                    <Text style={styles.propertyTitle} numberOfLines={1}>
-                      {property.title}
-                    </Text>
-                    
-                    <View style={styles.locationRow}>
-                      <MapPin size={14} color="#64748B" strokeWidth={2} />
-                      <Text style={styles.locationText} numberOfLines={1}>
-                        {property.location.city}
-                      </Text>
+                      <TouchableOpacity
+                        style={styles.favoriteButton}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          removeFavorite(property.id);
+                        }}
+                      >
+                        <Heart
+                          size={18}
+                          color="#EF4444"
+                          fill="#EF4444"
+                          strokeWidth={2}
+                        />
+                      </TouchableOpacity>
                     </View>
 
-                    {property.listingCategory !== 'stand' && property.listingCategory !== 'commercial' && (
-                      <View style={styles.detailsRow}>
-                        <View style={styles.detailItem}>
-                          <HomeIcon size={14} color={Colors.primary} strokeWidth={2} />
-                          <Text style={styles.detailText}>{(property as any).bedrooms} Bedroom</Text>
-                        </View>
-                        <View style={styles.detailItem}>
-                          <Bath size={14} color={Colors.primary} strokeWidth={2} />
-                          <Text style={styles.detailText}>{(property as any).bathrooms} Bathroom</Text>
-                        </View>
-                      </View>
-                    )}
-
-                    <Text style={styles.propertyPrice}>
-                      ${property.price.toLocaleString()}
-                      <Text style={styles.priceType}>
-                        {property.priceType === 'monthly' ? '/month' : ''}
+                    <View style={styles.propertyInfo}>
+                      <Text style={styles.propertyTitle} numberOfLines={1}>
+                        {property.title}
                       </Text>
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
+                      
+                      <View style={styles.locationRow}>
+                        <MapPin size={14} color="#64748B" strokeWidth={2} />
+                        <Text style={styles.locationText} numberOfLines={1}>
+                          {property.location.city}
+                        </Text>
+                      </View>
+
+                      {property.listingCategory !== 'stand' && property.listingCategory !== 'commercial' && 'bedrooms' in property && (
+                        <View style={styles.detailsRow}>
+                          <View style={styles.detailItem}>
+                            <HomeIcon size={14} color={Colors.primary} strokeWidth={2} />
+                            <Text style={styles.detailText}>{property.bedrooms} Bedroom</Text>
+                          </View>
+                          {'bathrooms' in property && (
+                            <View style={styles.detailItem}>
+                              <Bath size={14} color={Colors.primary} strokeWidth={2} />
+                              <Text style={styles.detailText}>{property.bathrooms} Bathroom</Text>
+                            </View>
+                          )}
+                        </View>
+                      )}
+
+                      <Text style={styles.propertyPrice}>
+                        ${property.price.toLocaleString()}
+                        <Text style={styles.priceType}>
+                          {property.priceType === 'monthly' ? '/month' : ''}
+                        </Text>
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
-          </View>
+          )
         ) : (
           <View style={styles.followingContainer}>
-            {followedAgenciesList.length === 0 ? (
-              <View style={styles.emptyContainer}>
-                <View style={styles.emptyIconContainer}>
-                  <Building2 size={64} color="#E2E8F0" strokeWidth={1.5} />
-                </View>
-                <Text style={styles.emptyTitle}>Not Following Anyone</Text>
-                <Text style={styles.emptyDescription}>
-                  Follow agencies and agents to see their latest property updates here.
-                </Text>
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyIconContainer}>
+                <Building2 size={64} color="#E2E8F0" strokeWidth={1.5} />
               </View>
-            ) : (
-              <View style={styles.followingList}>
-                {followedAgenciesList.map(agency => {
-                  const agencyProperties = mockProperties.filter(p => 
-                    agency.staff.some(s => s.id === p.agentId)
-                  ).slice(0, 3);
-                  
-                  return (
-                    <View key={agency.id} style={styles.agencySection}>
-                      <TouchableOpacity 
-                        style={styles.agencyHeader}
-                        onPress={() => router.push({ pathname: '/profile/[id]' as any, params: { id: agency.id, type: 'agency' } })}
-                      >
-                        <Image source={{ uri: agency.logo }} style={styles.agencyLogo} />
-                        <View style={styles.agencyInfo}>
-                          <View style={styles.agencyNameRow}>
-                            <Building2 size={18} color={Colors.primary} strokeWidth={2.5} />
-                            <Text style={styles.agencyName}>{agency.name}</Text>
-                          </View>
-                          <View style={styles.agencyMetaRow}>
-                            <Calendar size={14} color={Colors.text.secondary} />
-                            <Text style={styles.agencyMetaText}>Updated 2 days ago</Text>
-                          </View>
-                        </View>
-                      </TouchableOpacity>
-
-                      <View style={styles.agencyPropertiesList}>
-                        {agencyProperties.map(property => (
-                          <TouchableOpacity
-                            key={property.id}
-                            style={styles.followPropertyCard}
-                            onPress={() => router.push({ pathname: '/property/[id]' as any, params: { id: property.id } })}
-                            activeOpacity={0.7}
-                          >
-                            <View style={styles.followPropertyImageContainer}>
-                              <Image 
-                                source={{ uri: property.images[0] }} 
-                                style={styles.followPropertyImage}
-                              />
-                            </View>
-
-                            <View style={styles.followPropertyInfo}>
-                              <Text style={styles.followPropertyTitle} numberOfLines={1}>
-                                {property.title}
-                              </Text>
-                              
-                              <View style={styles.locationRow}>
-                                <MapPin size={14} color="#64748B" strokeWidth={2} />
-                                <Text style={styles.locationText} numberOfLines={1}>
-                                  {property.location.city}
-                                </Text>
-                              </View>
-
-                              {property.listingCategory !== 'stand' && property.listingCategory !== 'commercial' && (
-                                <View style={styles.detailsRow}>
-                                  <View style={styles.detailItem}>
-                                    <HomeIcon size={14} color={Colors.primary} strokeWidth={2} />
-                                    <Text style={styles.detailText}>{(property as any).bedrooms} Bedroom</Text>
-                                  </View>
-                                  <View style={styles.detailItem}>
-                                    <Bath size={14} color={Colors.primary} strokeWidth={2} />
-                                    <Text style={styles.detailText}>{(property as any).bathrooms} Bathroom</Text>
-                                  </View>
-                                </View>
-                              )}
-
-                              <Text style={styles.propertyPrice}>
-                                ${property.price.toLocaleString()}
-                                <Text style={styles.priceType}>
-                                  {property.priceType === 'monthly' ? '/month' : ''}
-                                </Text>
-                              </Text>
-                            </View>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    </View>
-                  );
-                })}
-              </View>
-            )}
+              <Text style={styles.emptyTitle}>Following Coming Soon</Text>
+              <Text style={styles.emptyDescription}>
+                Follow agencies and agents to see their latest property updates here.
+              </Text>
+            </View>
           </View>
         )}
       </ScrollView>
@@ -292,6 +223,17 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingBottom: 120,
   },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    paddingTop: 100,
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: Colors.text.secondary,
+  },
   emptyContainer: {
     flex: 1,
     alignItems: 'center' as const,
@@ -322,6 +264,11 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 32,
   },
+  errorText: {
+    fontSize: 16,
+    color: '#EF4444',
+    textAlign: 'center' as const,
+  },
   exploreButton: {
     backgroundColor: Colors.primary,
     paddingVertical: 14,
@@ -335,12 +282,6 @@ const styles = StyleSheet.create({
   },
   propertiesContainer: {
     padding: DesignSystem.contentPadding,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700' as const,
-    color: '#0F172A',
-    marginBottom: 16,
   },
   propertiesList: {
     gap: 14,
@@ -453,98 +394,5 @@ const styles = StyleSheet.create({
   },
   followingContainer: {
     flex: 1,
-  },
-  followingList: {
-    padding: DesignSystem.contentPadding,
-    gap: 24,
-  },
-  agencySection: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 2,
-      },
-      web: {
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
-      },
-    }),
-  },
-  agencyHeader: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: 12,
-    marginBottom: 16,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-  },
-  agencyLogo: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#F8FAFC',
-  },
-  agencyInfo: {
-    flex: 1,
-    gap: 4,
-  },
-  agencyNameRow: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: 8,
-  },
-  agencyName: {
-    fontSize: 17,
-    fontWeight: '700' as const,
-    color: '#0F172A',
-  },
-  agencyMetaRow: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: 6,
-  },
-  agencyMetaText: {
-    fontSize: 13,
-    color: Colors.text.secondary,
-    fontWeight: '500' as const,
-  },
-  agencyPropertiesList: {
-    gap: 12,
-  },
-  followPropertyCard: {
-    flexDirection: 'row' as const,
-    backgroundColor: '#F8FAFC',
-    borderRadius: 12,
-    overflow: 'hidden' as const,
-  },
-  followPropertyImageContainer: {
-    width: 90,
-    height: 100,
-  },
-  followPropertyImage: {
-    width: '100%' as const,
-    height: '100%' as const,
-    backgroundColor: '#E2E8F0',
-  },
-  followPropertyInfo: {
-    flex: 1,
-    padding: 10,
-    justifyContent: 'space-between' as const,
-  },
-  followPropertyTitle: {
-    fontSize: 15,
-    fontWeight: '700' as const,
-    color: '#0F172A',
-    marginBottom: 2,
   },
 });

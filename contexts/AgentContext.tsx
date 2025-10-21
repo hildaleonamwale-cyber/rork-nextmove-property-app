@@ -28,28 +28,34 @@ export interface AgentProfile {
 }
 
 export const [AgentProvider, useAgent] = createContextHook(() => {
-  const { user, isAgent } = useUser();
+  const { user, isAgent, refetch: refetchUser } = useUser();
   const [profile, setProfile] = useState<AgentProfile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchProfile = useCallback(async () => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      setProfile(null);
+      return;
+    }
 
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
+      setError(null);
+      
+      const { data, error: fetchError } = await supabase
         .from('agents')
         .select('*, users!agents_user_id_fkey(name, avatar)')
         .eq('user_id', user.id)
         .single();
 
-      if (error) {
-        if (error.code === 'PGRST116') {
+      if (fetchError) {
+        if (fetchError.code === 'PGRST116') {
           console.log('No agent profile found for user:', user.id);
           setProfile(null);
           return;
         }
-        throw error;
+        throw fetchError;
       }
 
       if (data) {
@@ -84,7 +90,9 @@ export const [AgentProvider, useAgent] = createContextHook(() => {
         });
       }
     } catch (error) {
-      console.error('Failed to fetch agent profile:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch agent profile';
+      console.error('Failed to fetch agent profile:', errorMessage);
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -113,47 +121,67 @@ export const [AgentProvider, useAgent] = createContextHook(() => {
       website?: string;
       address?: string;
     }) => {
-      if (!user?.id) throw new Error('No user ID');
+      if (!user?.id) throw new Error('No user ID - please log in first');
 
-      console.log('Creating agent profile with data:', { userId: user.id, ...data });
+      try {
+        console.log('Creating agent profile with data:', { userId: user.id, ...data });
 
-      const { data: newProfile, error } = await supabase
-        .from('agents')
-        .insert({
-          user_id: user.id,
-          package_level: data.package || 'free',
-          company_name: data.companyName,
-          bio: data.bio,
-          specialization: data.specialties?.join(', '),
-          years_of_experience: data.yearsExperience,
-          areas_served: data.address,
-          website: data.website,
-          rating: 0,
-          review_count: 0,
-        })
-        .select()
-        .single();
+        const { data: existingAgent } = await supabase
+          .from('agents')
+          .select('id')
+          .eq('user_id', user.id)
+          .single();
 
-      if (error) {
-        console.error('Error creating agent profile:', error);
-        throw new Error(`Cannot create agent profile: ${error.message}`);
+        if (existingAgent) {
+          console.log('Agent profile already exists:', existingAgent.id);
+          await fetchProfile();
+          return existingAgent.id;
+        }
+
+        const { data: newProfile, error } = await supabase
+          .from('agents')
+          .insert({
+            user_id: user.id,
+            package_level: data.package || 'free',
+            company_name: data.companyName,
+            bio: data.bio,
+            specialization: data.specialties?.join(', '),
+            years_of_experience: data.yearsExperience,
+            areas_served: data.address,
+            website: data.website,
+            rating: 0,
+            review_count: 0,
+          })
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Error creating agent profile:', error);
+          throw new Error(`Cannot create agent profile: ${error.message}`);
+        }
+
+        console.log('Agent profile created successfully:', newProfile);
+
+        const { error: updateError } = await supabase
+          .from('users')
+          .update({ role: 'agent' })
+          .eq('id', user.id);
+
+        if (updateError) {
+          console.error('Error updating user role:', updateError);
+        }
+
+        await refetchUser();
+        await fetchProfile();
+        return newProfile.id;
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Failed to create agent profile';
+        console.error('Create profile error:', errorMessage);
+        setError(errorMessage);
+        throw error;
       }
-
-      console.log('Agent profile created successfully:', newProfile);
-
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({ role: 'agent' })
-        .eq('id', user.id);
-
-      if (updateError) {
-        console.error('Error updating user role:', updateError);
-      }
-
-      await fetchProfile();
-      return newProfile.id;
     },
-    [user?.id, fetchProfile]
+    [user?.id, fetchProfile, refetchUser]
   );
 
   const updateProfile = useCallback(
@@ -173,95 +201,117 @@ export const [AgentProvider, useAgent] = createContextHook(() => {
       address?: string;
       socialMedia?: Record<string, string>;
     }) => {
-      if (!user?.id) throw new Error('No user ID');
+      if (!user?.id) throw new Error('No user ID - please log in first');
 
-      console.log('Updating agent profile with:', updates);
+      try {
+        console.log('Updating agent profile with:', updates);
 
-      const updateData: any = {};
-      if (updates.package) updateData.package_level = updates.package;
-      if (updates.companyName !== undefined) updateData.company_name = updates.companyName;
-      if (updates.bio !== undefined) updateData.bio = updates.bio;
-      if (updates.specialties !== undefined) updateData.specialization = updates.specialties.join(', ');
-      if (updates.yearsExperience !== undefined) updateData.years_of_experience = updates.yearsExperience;
-      if (updates.website !== undefined) updateData.website = updates.website;
-      if (updates.address !== undefined) updateData.areas_served = updates.address;
-      if (updates.socialMedia) {
-        if (updates.socialMedia.facebook !== undefined) updateData.facebook = updates.socialMedia.facebook;
-        if (updates.socialMedia.twitter !== undefined) updateData.twitter = updates.socialMedia.twitter;
-        if (updates.socialMedia.instagram !== undefined) updateData.instagram = updates.socialMedia.instagram;
-        if (updates.socialMedia.linkedin !== undefined) updateData.linkedin = updates.socialMedia.linkedin;
-      }
+        const updateData: Record<string, unknown> = {};
+        if (updates.package) updateData.package_level = updates.package;
+        if (updates.companyName !== undefined) updateData.company_name = updates.companyName;
+        if (updates.bio !== undefined) updateData.bio = updates.bio;
+        if (updates.specialties !== undefined) updateData.specialization = updates.specialties.join(', ');
+        if (updates.yearsExperience !== undefined) updateData.years_of_experience = updates.yearsExperience;
+        if (updates.website !== undefined) updateData.website = updates.website;
+        if (updates.address !== undefined) updateData.areas_served = updates.address;
+        if (updates.socialMedia) {
+          if (updates.socialMedia.facebook !== undefined) updateData.facebook = updates.socialMedia.facebook;
+          if (updates.socialMedia.twitter !== undefined) updateData.twitter = updates.socialMedia.twitter;
+          if (updates.socialMedia.instagram !== undefined) updateData.instagram = updates.socialMedia.instagram;
+          if (updates.socialMedia.linkedin !== undefined) updateData.linkedin = updates.socialMedia.linkedin;
+        }
 
-      const { error } = await supabase
-        .from('agents')
-        .update(updateData)
-        .eq('user_id', user.id);
+        const { error } = await supabase
+          .from('agents')
+          .update(updateData)
+          .eq('user_id', user.id);
 
-      if (error) {
-        console.error('Error updating agent profile:', error);
+        if (error) {
+          console.error('Error updating agent profile:', error);
+          throw error;
+        }
+
+        await fetchProfile();
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Failed to update agent profile';
+        console.error('Update profile error:', errorMessage);
+        setError(errorMessage);
         throw error;
       }
-
-      await fetchProfile();
     },
     [user?.id, fetchProfile]
   );
 
   const upgradePackage = useCallback(
     async (newPackage: "free" | "pro" | "agency") => {
-      if (!user?.id) throw new Error('No user ID');
+      if (!user?.id) throw new Error('No user ID - please log in first');
 
-      const { error } = await supabase
-        .from('agents')
-        .update({ package_level: newPackage })
-        .eq('user_id', user.id);
+      try {
+        const { error } = await supabase
+          .from('agents')
+          .update({ package_level: newPackage })
+          .eq('user_id', user.id);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      await fetchProfile();
+        await fetchProfile();
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Failed to upgrade package';
+        console.error('Upgrade package error:', errorMessage);
+        setError(errorMessage);
+        throw error;
+      }
     },
     [user?.id, fetchProfile]
   );
 
   const completeOnboarding = useCallback(async () => {
-    if (!user?.id) throw new Error('No user ID');
+    if (!user?.id) throw new Error('No user ID - please log in first');
 
-    console.log('Completing onboarding for user:', user.id);
+    try {
+      console.log('Completing onboarding for user:', user.id);
 
-    const { data: existingAgent, error: fetchError } = await supabase
-      .from('agents')
-      .select('id')
-      .eq('user_id', user.id)
-      .single();
+      const { data: existingAgent, error: fetchError } = await supabase
+        .from('agents')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
 
-    if (fetchError && fetchError.code !== 'PGRST116') {
-      console.error('Error checking for existing agent:', fetchError);
-      throw fetchError;
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        console.error('Error checking for existing agent:', fetchError);
+        throw fetchError;
+      }
+
+      if (!existingAgent) {
+        console.log('No agent profile exists, creating one...');
+        await createProfile({});
+      }
+
+      const { error: roleError } = await supabase
+        .from('users')
+        .update({ role: 'agent' })
+        .eq('id', user.id);
+
+      if (roleError) {
+        console.error('Error updating user role:', roleError);
+        throw roleError;
+      }
+
+      await refetchUser();
+      await fetchProfile();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to complete onboarding';
+      console.error('Complete onboarding error:', errorMessage);
+      setError(errorMessage);
+      throw error;
     }
-
-    if (!existingAgent) {
-      console.log('No agent profile exists, creating one...');
-      await createProfile({});
-    }
-
-    const { error: roleError } = await supabase
-      .from('users')
-      .update({ role: 'agent' })
-      .eq('id', user.id);
-
-    if (roleError) {
-      console.error('Error updating user role:', roleError);
-      throw roleError;
-    }
-
-    await fetchProfile();
-  }, [user?.id, fetchProfile, createProfile]);
+  }, [user?.id, fetchProfile, createProfile, refetchUser]);
 
   const hasFeature = useCallback(
     (feature: string): boolean => {
       if (!profile) return false;
 
-      const packageFeatures = {
+      const packageFeatures: Record<string, string[]> = {
         free: [
           "basic_listing",
           "profile_edit",
@@ -304,13 +354,14 @@ export const [AgentProvider, useAgent] = createContextHook(() => {
   );
 
   const refetch = useCallback(() => {
-    fetchProfile();
+    return fetchProfile();
   }, [fetchProfile]);
 
   return useMemo(
     () => ({
       profile,
       isLoading,
+      error,
       createProfile,
       updateProfile,
       upgradePackage,
@@ -321,6 +372,7 @@ export const [AgentProvider, useAgent] = createContextHook(() => {
     [
       profile,
       isLoading,
+      error,
       createProfile,
       updateProfile,
       upgradePackage,
