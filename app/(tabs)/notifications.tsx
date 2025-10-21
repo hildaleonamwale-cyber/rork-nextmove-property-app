@@ -10,7 +10,8 @@ import { Bell, MessageCircle, Calendar, Heart, Home } from 'lucide-react-native'
 import Colors from '@/constants/colors';
 import { DesignSystem } from '@/constants/designSystem';
 import UniformHeader from '@/components/UniformHeader';
-import { trpc } from '@/lib/trpc';
+import { useSupabaseNotifications } from '@/hooks/useSupabaseNotifications';
+import { useUser } from '@/contexts/UserContext';
 
 interface Notification {
   id: string;
@@ -22,23 +23,12 @@ interface Notification {
 }
 
 export default function NotificationsScreen() {
-  const { data: notificationsData, refetch } = trpc.notifications.list.useQuery(
-    {},
-    {
-      refetchInterval: 10000,
-      refetchIntervalInBackground: false,
-    }
-  );
-  const markAsReadMutation = trpc.notifications.markAsRead.useMutation({
-    onSuccess: () => {
-      refetch();
-    },
-  });
-  const deleteNotificationMutation = trpc.notifications.delete.useMutation({
-    onSuccess: () => {
-      refetch();
-    },
-  });
+  const { user } = useUser();
+  const { 
+    notifications: notificationsData, 
+    markAsRead: markAsReadMutation, 
+    deleteNotification: deleteNotificationMutation 
+  } = useSupabaseNotifications(user?.id || '');
 
   const mockNotifications: Notification[] = [
     {
@@ -90,21 +80,21 @@ export default function NotificationsScreen() {
     }
   };
 
-  const notifications = notificationsData?.notifications.map(n => ({
+  const notifications = notificationsData.length > 0 ? notificationsData.map(n => ({
     id: n.id,
     type: n.type as 'message' | 'booking' | 'like' | 'property',
     title: n.title,
     description: n.message,
     timestamp: new Date(n.createdAt).toLocaleDateString(),
     read: n.read,
-  })) || mockNotifications;
+  })) : mockNotifications;
 
-  const handleClearAll = () => {
-    notifications.forEach(notification => {
+  const handleClearAll = async () => {
+    for (const notification of notifications) {
       if (!notification.read) {
-        deleteNotificationMutation.mutate({ notificationId: notification.id });
+        await deleteNotificationMutation(notification.id);
       }
-    });
+    }
   };
 
   const getIconColor = (type: string) => {
@@ -144,7 +134,7 @@ export default function NotificationsScreen() {
               style={[styles.notificationCard, !notification.read && styles.notificationUnread]}
               onPress={() => {
                 if (!notification.read) {
-                  markAsReadMutation.mutate({ notificationId: notification.id });
+                  markAsReadMutation(notification.id);
                 }
               }}
             >

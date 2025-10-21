@@ -15,25 +15,24 @@ import { DesignSystem } from '@/constants/designSystem';
 import UniformHeader from '@/components/UniformHeader';
 import SectionHeader from '@/components/SectionHeader';
 import { mockProperties, mockAgencies } from '@/mocks/properties';
+import { useSupabaseWishlist } from '@/hooks/useSupabaseWishlist';
+import { useUser } from '@/contexts/UserContext';
 
 type TabType = 'wishlist' | 'following';
 
 export default function WishlistScreen() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>('wishlist');
-  const [favorites, setFavorites] = useState<Set<string>>(new Set(mockProperties.slice(0, 5).map(p => p.id)));
+  const { user } = useUser();
+  const { wishlist, removeFromWishlist } = useSupabaseWishlist(user?.id || '');
   const [followedAgencies, setFollowedAgencies] = useState<Set<string>>(new Set([mockAgencies[0]?.id].filter(Boolean)));
 
-  const favoriteProperties = mockProperties.filter(p => favorites.has(p.id));
+  const favoriteProperties = wishlist.length > 0 ? wishlist : mockProperties.slice(0, 5);
   
   const followedAgenciesList = mockAgencies.filter(a => followedAgencies.has(a.id));
 
-  const removeFavorite = (id: string) => {
-    setFavorites(prev => {
-      const newSet = new Set(prev);
-      newSet.delete(id);
-      return newSet;
-    });
+  const removeFavorite = async (id: string) => {
+    await removeFromWishlist(id);
   };
 
   return (
@@ -123,16 +122,18 @@ export default function WishlistScreen() {
                       </Text>
                     </View>
 
-                    <View style={styles.detailsRow}>
-                      <View style={styles.detailItem}>
-                        <HomeIcon size={14} color={Colors.primary} strokeWidth={2} />
-                        <Text style={styles.detailText}>{property.bedrooms} Bedroom</Text>
+                    {property.listingCategory !== 'stand' && property.listingCategory !== 'commercial' && (
+                      <View style={styles.detailsRow}>
+                        <View style={styles.detailItem}>
+                          <HomeIcon size={14} color={Colors.primary} strokeWidth={2} />
+                          <Text style={styles.detailText}>{(property as any).bedrooms} Bedroom</Text>
+                        </View>
+                        <View style={styles.detailItem}>
+                          <Bath size={14} color={Colors.primary} strokeWidth={2} />
+                          <Text style={styles.detailText}>{(property as any).bathrooms} Bathroom</Text>
+                        </View>
                       </View>
-                      <View style={styles.detailItem}>
-                        <Bath size={14} color={Colors.primary} strokeWidth={2} />
-                        <Text style={styles.detailText}>{property.bathrooms} Bathroom</Text>
-                      </View>
-                    </View>
+                    )}
 
                     <Text style={styles.propertyPrice}>
                       ${property.price.toLocaleString()}
@@ -210,16 +211,18 @@ export default function WishlistScreen() {
                                 </Text>
                               </View>
 
-                              <View style={styles.detailsRow}>
-                                <View style={styles.detailItem}>
-                                  <HomeIcon size={14} color={Colors.primary} strokeWidth={2} />
-                                  <Text style={styles.detailText}>{property.bedrooms} Bedroom</Text>
+                              {property.listingCategory !== 'stand' && property.listingCategory !== 'commercial' && (
+                                <View style={styles.detailsRow}>
+                                  <View style={styles.detailItem}>
+                                    <HomeIcon size={14} color={Colors.primary} strokeWidth={2} />
+                                    <Text style={styles.detailText}>{(property as any).bedrooms} Bedroom</Text>
+                                  </View>
+                                  <View style={styles.detailItem}>
+                                    <Bath size={14} color={Colors.primary} strokeWidth={2} />
+                                    <Text style={styles.detailText}>{(property as any).bathrooms} Bathroom</Text>
+                                  </View>
                                 </View>
-                                <View style={styles.detailItem}>
-                                  <Bath size={14} color={Colors.primary} strokeWidth={2} />
-                                  <Text style={styles.detailText}>{property.bathrooms} Bathroom</Text>
-                                </View>
-                              </View>
+                              )}
 
                               <Text style={styles.propertyPrice}>
                                 ${property.price.toLocaleString()}

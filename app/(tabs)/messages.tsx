@@ -10,7 +10,8 @@ import {
 import { useRouter } from 'expo-router';
 import { Search, MessageCircle } from 'lucide-react-native';
 import Colors from '@/constants/colors';
-import { trpc } from '@/lib/trpc';
+import { useSupabaseConversations } from '@/hooks/useSupabaseMessages';
+import { useUser } from '@/contexts/UserContext';
 import { DesignSystem } from '@/constants/designSystem';
 import UniformHeader from '@/components/UniformHeader';
 
@@ -26,11 +27,9 @@ interface ChatPreview {
 export default function MessagesScreen() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
+  const { user } = useUser();
 
-  const { data: conversationsData } = trpc.messages.listConversations.useQuery(undefined, {
-    refetchInterval: 5000 as number | false,
-    refetchIntervalInBackground: false,
-  });
+  const { conversations: conversationsData, isLoading: isLoadingConversations } = useSupabaseConversations(user?.id || '');
 
   const mockChats: ChatPreview[] = [
     {
@@ -59,16 +58,16 @@ export default function MessagesScreen() {
     },
   ];
 
-  const chats = conversationsData?.conversations.map(conv => ({
-    id: conv.userId,
-    name: conv.userName || 'User',
+  const chats = conversationsData.length > 0 ? conversationsData.map(conv => ({
+    id: conv.id,
+    name: conv.participantNames[0] || 'User',
     lastMessage: conv.lastMessage || '',
-    timestamp: conv.timestamp
-      ? new Date(conv.timestamp).toLocaleDateString()
+    timestamp: conv.lastMessageTime
+      ? new Date(conv.lastMessageTime).toLocaleDateString()
       : '',
     unread: conv.unreadCount || 0,
     online: false,
-  })) || mockChats;
+  })) : mockChats;
 
   const filteredChats = chats.filter(chat =>
     chat.name.toLowerCase().includes(searchQuery.toLowerCase())
