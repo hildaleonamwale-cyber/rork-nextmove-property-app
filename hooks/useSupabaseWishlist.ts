@@ -25,8 +25,9 @@ export function useSupabaseWishlist(userId: string) {
           property_id,
           properties(
             id, title, description, property_type, listing_category, status,
-            price, price_type, images, beds, baths, area, address, city, suburb,
-            province, country, coordinates, featured, verified, views, bookings,
+            price, price_type, images, beds, baths, bedrooms, bathrooms, 
+            area, address, city, suburb, state, province, country, 
+            coordinates, latitude, longitude, featured, verified, views, bookings,
             inquiries, amenities, agent_id, user_id, created_at
           )
         `)
@@ -96,6 +97,12 @@ export function useSupabaseWishlist(userId: string) {
 function transformProperty(data: any): Listing | null {
   if (!data) return null;
 
+  const coordinates = data.coordinates || 
+    (data.latitude && data.longitude ? 
+      { latitude: parseFloat(data.latitude), longitude: parseFloat(data.longitude) } : 
+      { latitude: 0, longitude: 0 }
+    );
+
   const base = {
     id: data.id,
     title: data.title,
@@ -104,11 +111,11 @@ function transformProperty(data: any): Listing | null {
     priceType: data.price_type as 'monthly' | 'sale',
     location: {
       address: data.address || '',
-      area: data.suburb || '',
+      area: data.suburb || data.city || '',
       city: data.city || '',
-      province: data.province || '',
+      province: data.province || data.state || '',
       country: data.country || 'Zimbabwe',
-      coordinates: data.coordinates || { latitude: 0, longitude: 0 },
+      coordinates: coordinates,
     },
     images: data.images || [],
     area: data.area || 0,
@@ -150,8 +157,8 @@ function transformProperty(data: any): Listing | null {
 
   return {
     ...base,
-    bedrooms: data.beds || 0,
-    bathrooms: data.baths || 0,
+    bedrooms: data.beds || data.bedrooms || 0,
+    bathrooms: data.baths || data.bathrooms || 0,
     propertyType: data.property_type as any,
     amenities: data.amenities || [],
   } as any;

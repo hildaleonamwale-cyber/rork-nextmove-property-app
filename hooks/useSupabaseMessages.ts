@@ -62,10 +62,7 @@ export function useSupabaseConversations(userId: string) {
 
       const { data, error: fetchError } = await supabase
         .from('conversations')
-        .select(`
-          *,
-          properties(title)
-        `)
+        .select('*')
         .contains('participants', [userId])
         .order('updated_at', { ascending: false });
 
@@ -104,6 +101,16 @@ export function useSupabaseConversations(userId: string) {
             .neq('sender_id', userId)
             .eq('read', false);
 
+          let propertyTitle = undefined;
+          if (conv.property_id) {
+            const { data: property } = await supabase
+              .from('properties')
+              .select('title')
+              .eq('id', conv.property_id)
+              .single();
+            propertyTitle = property?.title;
+          }
+
           return {
             id: conv.id,
             participants: conv.participants,
@@ -113,7 +120,7 @@ export function useSupabaseConversations(userId: string) {
             lastMessageTime: lastMessage ? new Date(lastMessage.created_at) : new Date(),
             unreadCount: unreadCount || 0,
             propertyId: conv.property_id,
-            propertyTitle: (conv as any).properties?.title,
+            propertyTitle: propertyTitle,
           };
         })
       );
