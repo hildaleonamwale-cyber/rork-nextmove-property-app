@@ -21,7 +21,15 @@ export function useSupabaseWishlist(userId: string) {
 
       const { data, error: fetchError } = await supabase
         .from('wishlists')
-        .select('property_id, properties(*, agents(name, company_name))')
+        .select(`
+          property_id,
+          properties(
+            id, title, description, property_type, listing_category, status,
+            price, listing_type, images, beds, baths, area, address, city, suburb,
+            province, country, coordinates, featured, verified, views, bookings,
+            inquiries, amenities, agent_id, user_id, created_at
+          )
+        `)
         .eq('user_id', userId);
 
       if (fetchError) {
