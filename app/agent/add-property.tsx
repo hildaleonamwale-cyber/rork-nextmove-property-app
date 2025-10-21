@@ -20,6 +20,7 @@ import { supabase } from '@/lib/supabase';
 import SuccessPrompt from '@/components/SuccessPrompt';
 import { PropertyDraft } from '@/types/property';
 import { PROVINCES, getCitiesByProvince, Province } from '@/constants/locations';
+import { uploadPropertyImages } from '@/utils/supabase-storage';
 
 export default function AddPropertyScreen() {
   const router = useRouter();
@@ -106,9 +107,20 @@ export default function AddPropertyScreen() {
       return;
     }
 
+    if (selectedImages.length === 0) {
+      Alert.alert('Error', 'Please add at least one property image');
+      return;
+    }
+
     try {
       setIsSubmitting(true);
       console.log('Creating property for agent:', profile.id);
+
+      const tempPropertyId = `temp_${Date.now()}`;
+      console.log('Uploading images...');
+      
+      const uploadedImageUrls = await uploadPropertyImages(selectedImages, tempPropertyId);
+      console.log('Images uploaded:', uploadedImageUrls.length);
 
       const propertyData = {
         agent_id: profile.id,
@@ -120,7 +132,7 @@ export default function AddPropertyScreen() {
         status: formData.status,
         price: parseFloat(formData.price) || 0,
         price_type: formData.priceType === 'sale' ? 'total' : 'monthly',
-        images: JSON.stringify(selectedImages),
+        images: JSON.stringify(uploadedImageUrls),
         bedrooms: parseInt(formData.bedrooms) || 0,
         bathrooms: parseInt(formData.bathrooms) || 0,
         area: parseFloat(formData.propertyArea) || 0,
@@ -137,7 +149,7 @@ export default function AddPropertyScreen() {
         inquiries: 0,
       };
 
-      console.log('Property data:', propertyData);
+      console.log('Creating property with data');
 
       const { data, error } = await supabase
         .from('properties')
