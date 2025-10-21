@@ -90,6 +90,7 @@ CREATE TABLE users (
   user_mode TEXT DEFAULT 'client' CHECK (user_mode IN ('client', 'agent')),
   verified BOOLEAN NOT NULL DEFAULT false,
   blocked BOOLEAN NOT NULL DEFAULT false,
+  last_active TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

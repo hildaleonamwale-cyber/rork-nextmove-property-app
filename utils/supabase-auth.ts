@@ -197,10 +197,10 @@ export async function getCurrentUser(skipCache: boolean = false): Promise<Supaba
     .single();
 
   if (error) {
-    console.error('Error fetching user profile:', error);
+    console.error('Error fetching user profile:', error.message || error);
     await supabase.auth.signOut();
     await AsyncStorage.removeItem(USER_PROFILE_KEY);
-    return null;
+    throw new Error(`Failed to fetch user profile: ${error.message || 'Unknown error'}`);
   }
 
   if (!profile) {
