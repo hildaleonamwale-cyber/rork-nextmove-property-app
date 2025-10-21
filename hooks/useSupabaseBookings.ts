@@ -35,7 +35,7 @@ export function useSupabaseBookings(userId?: string, agentId?: string) {
           event: '*',
           schema: 'public',
           table: 'bookings',
-          filter: userId ? `user_id=eq.${userId}` : agentId ? `agent_id=eq.${agentId}` : undefined,
+          filter: userId ? `user_id=eq.${userId}` : undefined,
         },
         () => {
           fetchBookings();
@@ -58,9 +58,8 @@ export function useSupabaseBookings(userId?: string, agentId?: string) {
         .from('bookings')
         .select(`
           *,
-          properties(title, images),
-          users(name, email, phone),
-          agents(user_id, company_name)
+          properties(title, images, agent_id, agents(id, user_id, company_name)),
+          users(name, email, phone)
         `)
         .order('created_at', { ascending: false });
 
@@ -69,7 +68,7 @@ export function useSupabaseBookings(userId?: string, agentId?: string) {
       }
 
       if (agentId) {
-        query = query.eq('agent_id', agentId);
+        query = query.eq('properties.agent_id', agentId);
       }
 
       const { data, error: fetchError } = await query;
@@ -114,15 +113,12 @@ export function useSupabaseBookings(userId?: string, agentId?: string) {
     const { error } = await supabase.from('bookings').insert({
       property_id: params.propertyId,
       user_id: session.user.id,
-      agent_id: property.agent_id,
       property_title: property.title,
-      visit_date: params.visitDate.toISOString(),
-      visit_time: params.visitTime,
+      date: params.visitDate.toLocaleDateString(),
+      time: params.visitTime,
       client_name: user?.name || 'User',
       client_email: user?.email || '',
       client_phone: user?.phone || '',
-      date: params.visitDate.toLocaleDateString(),
-      time: params.visitTime,
       notes: params.notes,
       status: 'pending',
     });
@@ -138,7 +134,7 @@ export function useSupabaseBookings(userId?: string, agentId?: string) {
   const updateBookingStatus = async (bookingId: string, status: Booking['status']) => {
     const { error } = await supabase
       .from('bookings')
-      .update({ status, updated_at: new Date().toISOString() })
+      .update({ status })
       .eq('id', bookingId);
 
     if (error) {
@@ -153,22 +149,26 @@ export function useSupabaseBookings(userId?: string, agentId?: string) {
 }
 
 function transformBooking(data: any): Booking {
+  const images = typeof data.properties?.images === 'string' 
+    ? JSON.parse(data.properties.images) 
+    : data.properties?.images || [];
+  
   return {
     id: data.id,
     propertyId: data.property_id,
     propertyTitle: data.properties?.title || 'Property',
-    propertyImage: data.properties?.images?.[0] || '',
+    propertyImage: Array.isArray(images) ? images[0] : '',
     userId: data.user_id,
     userName: data.users?.name || 'User',
     userEmail: data.users?.email || '',
     userPhone: data.users?.phone || '',
-    agentId: data.agent_id,
-    agentName: data.agents?.company_name || 'Agent',
-    visitDate: new Date(data.visit_date),
-    visitTime: data.visit_time,
+    agentId: data.properties?.agents?.id || '',
+    agentName: data.properties?.agents?.company_name || 'Agent',
+    visitDate: new Date(data.date),
+    visitTime: data.time,
     status: data.status,
     notes: data.notes,
     createdAt: new Date(data.created_at),
-    updatedAt: new Date(data.updated_at),
+    updatedAt: new Date(data.created_at),
   };
 }

@@ -14,8 +14,8 @@ export interface Banner {
 export interface Section {
   id: string;
   title: string;
-  type: 'featured' | 'new' | 'popular' | 'custom';
-  filters: any;
+  type: 'featured_properties' | 'browse_properties' | 'featured_agencies' | 'custom';
+  config: any;
   order: number;
   enabled: boolean;
   createdAt: Date;
@@ -142,7 +142,7 @@ export function useSupabaseSections() {
     const { error } = await supabase.from('homepage_sections').insert({
       title: section.title,
       type: section.type,
-      filters: section.filters,
+      config: typeof section.config === 'string' ? section.config : JSON.stringify(section.config),
       order: section.order,
       enabled: section.enabled,
     });
@@ -152,15 +152,16 @@ export function useSupabaseSections() {
   };
 
   const updateSection = async (id: string, updates: Partial<Section>) => {
+    const updateData: any = {};
+    if (updates.title !== undefined) updateData.title = updates.title;
+    if (updates.type !== undefined) updateData.type = updates.type;
+    if (updates.config !== undefined) updateData.config = typeof updates.config === 'string' ? updates.config : JSON.stringify(updates.config);
+    if (updates.order !== undefined) updateData.order = updates.order;
+    if (updates.enabled !== undefined) updateData.enabled = updates.enabled;
+
     const { error } = await supabase
       .from('homepage_sections')
-      .update({
-        title: updates.title,
-        type: updates.type,
-        filters: updates.filters,
-        order: updates.order,
-        enabled: updates.enabled,
-      })
+      .update(updateData)
       .eq('id', id);
 
     if (error) throw error;
@@ -327,11 +328,20 @@ function transformBanner(data: any): Banner {
 }
 
 function transformSection(data: any): Section {
+  let config = data.config;
+  if (typeof config === 'string') {
+    try {
+      config = JSON.parse(config);
+    } catch {
+      config = {};
+    }
+  }
+  
   return {
     id: data.id,
     title: data.title,
     type: data.type,
-    filters: data.filters,
+    config: config,
     order: data.order,
     enabled: data.enabled,
     createdAt: new Date(data.created_at),
