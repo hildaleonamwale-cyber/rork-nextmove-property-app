@@ -117,7 +117,7 @@ export function useSupabaseSections() {
       setError(null);
 
       const { data, error: fetchError } = await supabase
-        .from('sections')
+        .from('homepage_sections')
         .select('*')
         .order('order', { ascending: true });
 
@@ -139,7 +139,7 @@ export function useSupabaseSections() {
   };
 
   const createSection = async (section: Omit<Section, 'id' | 'createdAt'>) => {
-    const { error } = await supabase.from('sections').insert({
+    const { error } = await supabase.from('homepage_sections').insert({
       title: section.title,
       type: section.type,
       filters: section.filters,
@@ -153,7 +153,7 @@ export function useSupabaseSections() {
 
   const updateSection = async (id: string, updates: Partial<Section>) => {
     const { error } = await supabase
-      .from('sections')
+      .from('homepage_sections')
       .update({
         title: updates.title,
         type: updates.type,
@@ -168,7 +168,7 @@ export function useSupabaseSections() {
   };
 
   const deleteSection = async (id: string) => {
-    const { error } = await supabase.from('sections').delete().eq('id', id);
+    const { error } = await supabase.from('homepage_sections').delete().eq('id', id);
     if (error) throw error;
     await fetchSections();
   };
