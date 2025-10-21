@@ -24,6 +24,8 @@ import Colors from '@/constants/colors';
 import { DesignSystem } from '@/constants/designSystem';
 import { useUserMode } from '@/contexts/UserModeContext';
 import { useAgentProfile } from '@/contexts/AgentProfileContext';
+import { useUser } from '@/contexts/UserContext';
+import { OptimizedImage } from '@/components/OptimizedImage';
 import { useSuperAdmin } from '@/contexts/SuperAdminContext';
 import UniformHeader from '@/components/UniformHeader';
 
@@ -32,6 +34,7 @@ export default function AccountScreen() {
   const { isClient, isAgent, switchMode } = useUserMode();
   const { profile } = useAgentProfile();
   const { isSuperAdmin, enableSuperAdmin } = useSuperAdmin();
+  const { user, isLoading } = useUser();
 
   const clientMenuSections = [
     {
@@ -114,12 +117,24 @@ export default function AccountScreen() {
         </View>
         
         <View style={styles.profileCard}>
-          <View style={styles.avatar}>
-            <User size={32} color={Colors.white} />
-          </View>
+          {user?.avatar ? (
+            <OptimizedImage 
+              source={{ uri: user.avatar }}
+              style={styles.avatar}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={styles.avatar}>
+              <User size={32} color={Colors.white} />
+            </View>
+          )}
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>John Doe</Text>
-            <Text style={styles.profileEmail}>john.doe@example.com</Text>
+            <Text style={styles.profileName}>
+              {isLoading ? 'Loading...' : (user?.name || 'Guest User')}
+            </Text>
+            <Text style={styles.profileEmail}>
+              {isLoading ? 'Loading...' : (user?.email || 'No email')}
+            </Text>
           </View>
           <TouchableOpacity 
             style={styles.editButton}
@@ -220,6 +235,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
+    overflow: 'hidden' as const,
   },
   profileInfo: {
     flex: 1,
