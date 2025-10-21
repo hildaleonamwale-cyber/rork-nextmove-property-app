@@ -158,7 +158,7 @@ export async function logout(): Promise<void> {
   await AsyncStorage.removeItem('@user_mode');
 }
 
-export async function getCurrentUser(): Promise<SupabaseUser | null> {
+export async function getCurrentUser(skipCache: boolean = false): Promise<SupabaseUser | null> {
   const { data: { session } } = await supabase.auth.getSession();
 
   if (!session) {
@@ -166,14 +166,16 @@ export async function getCurrentUser(): Promise<SupabaseUser | null> {
     return null;
   }
 
-  const cachedProfile = await AsyncStorage.getItem(USER_PROFILE_KEY);
-  if (cachedProfile) {
-    const parsed = JSON.parse(cachedProfile);
-    return {
-      ...parsed,
-      createdAt: parsed.createdAt ? new Date(parsed.createdAt) : null,
-      lastActive: parsed.lastActive ? new Date(parsed.lastActive) : null,
-    };
+  if (!skipCache) {
+    const cachedProfile = await AsyncStorage.getItem(USER_PROFILE_KEY);
+    if (cachedProfile) {
+      const parsed = JSON.parse(cachedProfile);
+      return {
+        ...parsed,
+        createdAt: parsed.createdAt ? new Date(parsed.createdAt) : null,
+        lastActive: parsed.lastActive ? new Date(parsed.lastActive) : null,
+      };
+    }
   }
 
   const { data: profile, error } = await supabase

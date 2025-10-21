@@ -78,12 +78,14 @@ export const [AgentProvider, useAgent] = createContextHook(() => {
   }, [user?.id]);
 
   useEffect(() => {
-    if (user?.id && isAgent && user.hasAgentProfile) {
+    if (user?.id && isAgent) {
+      console.log('Fetching agent profile for user:', user.id, 'hasAgentProfile:', user.hasAgentProfile);
       fetchProfile();
     } else {
+      console.log('Not fetching agent profile - user:', user?.id, 'isAgent:', isAgent);
       setProfile(null);
     }
-  }, [user?.id, isAgent, user?.hasAgentProfile, fetchProfile]);
+  }, [user?.id, isAgent, fetchProfile]);
 
   const createProfile = useCallback(
     async (data: {
@@ -120,6 +122,11 @@ export const [AgentProvider, useAgent] = createContextHook(() => {
         .single();
 
       if (error) throw error;
+
+      await supabase
+        .from('users')
+        .update({ has_agent_profile: true })
+        .eq('id', user.id);
 
       await fetchProfile();
       return newProfile.id;
@@ -190,8 +197,15 @@ export const [AgentProvider, useAgent] = createContextHook(() => {
   );
 
   const completeOnboarding = useCallback(async () => {
+    if (!user?.id) throw new Error('No user ID');
+
     await updateProfile({ accountSetupComplete: true });
-  }, [updateProfile]);
+
+    await supabase
+      .from('users')
+      .update({ has_agent_profile: true })
+      .eq('id', user.id);
+  }, [updateProfile, user?.id]);
 
   const hasFeature = useCallback(
     (feature: string): boolean => {

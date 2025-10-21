@@ -12,10 +12,10 @@ export const [UserProvider, useUser] = createContextHook(() => {
     loadUser();
   }, []);
 
-  const loadUser = async () => {
+  const loadUser = async (skipCache: boolean = false) => {
     try {
       setIsLoading(true);
-      const currentUser = await getCurrentUser();
+      const currentUser = await getCurrentUser(skipCache);
       setUser(currentUser);
     } catch (error) {
       console.error('Failed to load user:', error);
@@ -44,8 +44,8 @@ export const [UserProvider, useUser] = createContextHook(() => {
     [user]
   );
 
-  const refetch = useCallback(() => {
-    loadUser();
+  const refetch = useCallback((skipCache: boolean = true) => {
+    loadUser(skipCache);
   }, []);
 
   const isClient = user?.role === "client";

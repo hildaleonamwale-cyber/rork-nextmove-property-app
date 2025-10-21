@@ -16,10 +16,12 @@ import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
 import { useAgentProfile } from '@/contexts/AgentProfileContext';
+import { useUser } from '@/contexts/UserContext';
 
 export default function AgentOnboardingScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { refetch: refetchUser } = useUser();
   const { profile, updateProfile, completeOnboarding } = useAgentProfile();
 
   const [step, setStep] = useState(1);
@@ -56,9 +58,15 @@ export default function AgentOnboardingScreen() {
   };
 
   const handleComplete = async () => {
-    await updateProfile(formData);
-    await completeOnboarding();
-    router.replace('/agent/dashboard' as any);
+    try {
+      await updateProfile(formData);
+      await completeOnboarding();
+      await refetchUser();
+      router.replace('/agent/dashboard' as any);
+    } catch (error) {
+      console.error('Failed to complete onboarding:', error);
+      Alert.alert('Error', 'Failed to complete setup. Please try again.');
+    }
   };
 
   const pickProfilePicture = async () => {
