@@ -51,14 +51,36 @@ export async function signup(params: SignupParams): Promise<{ user: SupabaseUser
     throw new Error('No user returned from signup');
   }
 
-  const { data: profile, error: profileError } = await supabase
-    .from('users')
-    .select()
-    .eq('id', authData.user.id)
-    .single();
+  console.log('Auth user created, waiting for profile creation...');
 
-  if (profileError) {
-    console.error('Profile creation error:', profileError);
+  let profile = null;
+  let attempts = 0;
+  const maxAttempts = 10;
+
+  while (!profile && attempts < maxAttempts) {
+    attempts++;
+    
+    await new Promise(resolve => setTimeout(resolve, attempts * 200));
+    
+    const { data, error } = await supabase
+      .from('users')
+      .select()
+      .eq('id', authData.user.id)
+      .single();
+
+    if (!error && data) {
+      profile = data;
+      console.log('Profile found after', attempts, 'attempts');
+      break;
+    }
+
+    if (attempts === maxAttempts) {
+      console.error('Profile creation timeout after', maxAttempts, 'attempts');
+      throw new Error('Profile creation is taking longer than expected. Please try logging in.');
+    }
+  }
+
+  if (!profile) {
     throw new Error('Failed to create user profile');
   }
 
@@ -76,6 +98,8 @@ export async function signup(params: SignupParams): Promise<{ user: SupabaseUser
   };
 
   await AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(user));
+
+  console.log('Signup completed successfully');
 
   return { user };
 }
