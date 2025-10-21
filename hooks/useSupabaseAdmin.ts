@@ -1,0 +1,315 @@
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
+
+export interface Banner {
+  id: string;
+  title: string;
+  imageUrl: string;
+  link?: string;
+  order: number;
+  enabled: boolean;
+  createdAt: Date;
+}
+
+export interface Section {
+  id: string;
+  title: string;
+  type: 'featured' | 'new' | 'popular' | 'custom';
+  filters: any;
+  order: number;
+  enabled: boolean;
+  createdAt: Date;
+}
+
+export interface UserStats {
+  totalUsers: number;
+  activeUsers: number;
+  newUsers: number;
+  totalAgents: number;
+}
+
+export function useSupabaseBanners() {
+  const [banners, setBanners] = useState<Banner[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchBanners();
+  }, []);
+
+  const fetchBanners = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const { data, error: fetchError } = await supabase
+        .from('banners')
+        .select('*')
+        .order('order', { ascending: true });
+
+      if (fetchError) throw new Error(fetchError.message);
+
+      setBanners(data?.map(transformBanner) || []);
+    } catch (err: any) {
+      console.error('Failed to fetch banners:', err);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const createBanner = async (banner: Omit<Banner, 'id' | 'createdAt'>) => {
+    const { error } = await supabase.from('banners').insert({
+      title: banner.title,
+      image_url: banner.imageUrl,
+      link: banner.link,
+      order: banner.order,
+      enabled: banner.enabled,
+    });
+
+    if (error) throw error;
+    await fetchBanners();
+  };
+
+  const updateBanner = async (id: string, updates: Partial<Banner>) => {
+    const { error } = await supabase
+      .from('banners')
+      .update({
+        title: updates.title,
+        image_url: updates.imageUrl,
+        link: updates.link,
+        order: updates.order,
+        enabled: updates.enabled,
+      })
+      .eq('id', id);
+
+    if (error) throw error;
+    await fetchBanners();
+  };
+
+  const deleteBanner = async (id: string) => {
+    const { error } = await supabase.from('banners').delete().eq('id', id);
+    if (error) throw error;
+    await fetchBanners();
+  };
+
+  return { banners, isLoading, error, createBanner, updateBanner, deleteBanner, refetch: fetchBanners };
+}
+
+export function useSupabaseSections() {
+  const [sections, setSections] = useState<Section[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchSections();
+  }, []);
+
+  const fetchSections = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const { data, error: fetchError } = await supabase
+        .from('sections')
+        .select('*')
+        .order('order', { ascending: true });
+
+      if (fetchError) throw new Error(fetchError.message);
+
+      setSections(data?.map(transformSection) || []);
+    } catch (err: any) {
+      console.error('Failed to fetch sections:', err);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const createSection = async (section: Omit<Section, 'id' | 'createdAt'>) => {
+    const { error } = await supabase.from('sections').insert({
+      title: section.title,
+      type: section.type,
+      filters: section.filters,
+      order: section.order,
+      enabled: section.enabled,
+    });
+
+    if (error) throw error;
+    await fetchSections();
+  };
+
+  const updateSection = async (id: string, updates: Partial<Section>) => {
+    const { error } = await supabase
+      .from('sections')
+      .update({
+        title: updates.title,
+        type: updates.type,
+        filters: updates.filters,
+        order: updates.order,
+        enabled: updates.enabled,
+      })
+      .eq('id', id);
+
+    if (error) throw error;
+    await fetchSections();
+  };
+
+  const deleteSection = async (id: string) => {
+    const { error } = await supabase.from('sections').delete().eq('id', id);
+    if (error) throw error;
+    await fetchSections();
+  };
+
+  return { sections, isLoading, error, createSection, updateSection, deleteSection, refetch: fetchSections };
+}
+
+export function useSupabaseUsers() {
+  const [users, setUsers] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const { data, error: fetchError } = await supabase
+        .from('users')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (fetchError) throw new Error(fetchError.message);
+
+      setUsers(data || []);
+    } catch (err: any) {
+      console.error('Failed to fetch users:', err);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const updateUserRole = async (userId: string, role: string) => {
+    const { error } = await supabase
+      .from('users')
+      .update({ role })
+      .eq('id', userId);
+
+    if (error) throw error;
+    await fetchUsers();
+  };
+
+  const blockUser = async (userId: string) => {
+    const { error } = await supabase
+      .from('users')
+      .update({ blocked: true })
+      .eq('id', userId);
+
+    if (error) throw error;
+    await fetchUsers();
+  };
+
+  const unblockUser = async (userId: string) => {
+    const { error } = await supabase
+      .from('users')
+      .update({ blocked: false })
+      .eq('id', userId);
+
+    if (error) throw error;
+    await fetchUsers();
+  };
+
+  const verifyUser = async (userId: string) => {
+    const { error } = await supabase
+      .from('users')
+      .update({ verified: true })
+      .eq('id', userId);
+
+    if (error) throw error;
+    await fetchUsers();
+  };
+
+  return { users, isLoading, error, updateUserRole, blockUser, unblockUser, verifyUser, refetch: fetchUsers };
+}
+
+export function useSupabaseUserStats() {
+  const [stats, setStats] = useState<UserStats>({
+    totalUsers: 0,
+    activeUsers: 0,
+    newUsers: 0,
+    totalAgents: 0,
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const fetchStats = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const { count: totalUsers } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true });
+
+      const { count: totalAgents } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+        .in('role', ['agent', 'agency']);
+
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const { count: newUsers } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', thirtyDaysAgo.toISOString());
+
+      setStats({
+        totalUsers: totalUsers || 0,
+        activeUsers: totalUsers || 0,
+        newUsers: newUsers || 0,
+        totalAgents: totalAgents || 0,
+      });
+    } catch (err: any) {
+      console.error('Failed to fetch stats:', err);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { stats, isLoading, error, refetch: fetchStats };
+}
+
+function transformBanner(data: any): Banner {
+  return {
+    id: data.id,
+    title: data.title,
+    imageUrl: data.image_url,
+    link: data.link,
+    order: data.order,
+    enabled: data.enabled,
+    createdAt: new Date(data.created_at),
+  };
+}
+
+function transformSection(data: any): Section {
+  return {
+    id: data.id,
+    title: data.title,
+    type: data.type,
+    filters: data.filters,
+    order: data.order,
+    enabled: data.enabled,
+    createdAt: new Date(data.created_at),
+  };
+}

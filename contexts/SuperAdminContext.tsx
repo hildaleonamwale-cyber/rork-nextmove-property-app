@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useMemo, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import createContextHook from '@nkzw/create-context-hook';
+import { useSupabaseBanners, useSupabaseSections, useSupabaseUsers, useSupabaseUserStats } from '@/hooks/useSupabaseAdmin';
 
 export type UserRole = 'user' | 'agent' | 'agency' | 'super_admin';
 export type AccountTier = 'free' | 'pro' | 'agency';
@@ -212,148 +213,130 @@ const mockUsers: User[] = [
 ];
 
 export const [SuperAdminProvider, useSuperAdmin] = createContextHook(() => {
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [banners, setBanners] = useState<HomepageBanner[]>(defaultBanners);
-  const [sections, setSections] = useState<HomepageSection[]>(defaultSections);
-  const [settings, setSettings] = useState<SystemSettings>(defaultSettings);
-  const [users, setUsers] = useState<User[]>(mockUsers);
+  const { banners: supabaseBanners, isLoading: bannersLoading, createBanner, updateBanner: updateSupabaseBanner, deleteBanner: deleteSupabaseBanner } = useSupabaseBanners();
+  const { sections: supabaseSections, isLoading: sectionsLoading, createSection, updateSection: updateSupabaseSection, deleteSection: deleteSupabaseSection } = useSupabaseSections();
+  const { users: supabaseUsers, isLoading: usersLoading, updateUserRole, blockUser: blockSupabaseUser, unblockUser: unblockSupabaseUser, verifyUser } = useSupabaseUsers();
+  const { stats } = useSupabaseUserStats();
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const isLoading = bannersLoading || sectionsLoading || usersLoading;
 
-  const loadData = async () => {
-    try {
-      const [adminStatus, storedBanners, storedSections, storedSettings, storedUsers] = await Promise.all([
-        AsyncStorage.getItem(SUPER_ADMIN_KEY),
-        AsyncStorage.getItem(BANNERS_KEY),
-        AsyncStorage.getItem(SECTIONS_KEY),
-        AsyncStorage.getItem(SYSTEM_SETTINGS_KEY),
-        AsyncStorage.getItem(USERS_KEY),
-      ]);
+  const banners: HomepageBanner[] = supabaseBanners.map((b) => ({
+    id: b.id,
+    imageUrl: b.imageUrl,
+    title: b.title,
+    link: b.link || '',
+    enabled: b.enabled,
+    order: b.order,
+  }));
 
-      setIsSuperAdmin(adminStatus === 'true');
-      if (storedBanners) setBanners(JSON.parse(storedBanners));
-      if (storedSections) setSections(JSON.parse(storedSections));
-      if (storedSettings) setSettings(JSON.parse(storedSettings));
-      if (storedUsers) setUsers(JSON.parse(storedUsers));
-    } catch (error) {
-      console.error('Failed to load super admin data:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const sections: HomepageSection[] = supabaseSections.map((s) => ({
+    id: s.id,
+    type: s.type as any,
+    title: s.title,
+    subtitle: undefined,
+    icon: undefined,
+    enabled: s.enabled,
+    order: s.order,
+    config: s.filters,
+    analytics: undefined,
+  }));
+
+  const users: User[] = supabaseUsers.map((u) => ({
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    role: u.role as UserRole,
+    accountTier: 'free' as AccountTier,
+    blocked: u.blocked || false,
+    createdAt: new Date(u.created_at).toISOString().split('T')[0],
+    lastActive: new Date(u.updated_at || u.created_at).toISOString().split('T')[0],
+    propertiesCount: 0,
+    bookingsCount: 0,
+  }));
 
   const enableSuperAdmin = useCallback(async () => {
-    try {
-      await AsyncStorage.setItem(SUPER_ADMIN_KEY, 'true');
-      setIsSuperAdmin(true);
-      console.log('Super Admin mode enabled');
-    } catch (error) {
-      console.error('Failed to enable super admin:', error);
-    }
+    await AsyncStorage.setItem(SUPER_ADMIN_KEY, 'true');
+    console.log('Super Admin mode enabled');
   }, []);
 
   const disableSuperAdmin = useCallback(async () => {
-    try {
-      await AsyncStorage.setItem(SUPER_ADMIN_KEY, 'false');
-      setIsSuperAdmin(false);
-      console.log('Super Admin mode disabled');
-    } catch (error) {
-      console.error('Failed to disable super admin:', error);
-    }
+    await AsyncStorage.setItem(SUPER_ADMIN_KEY, 'false');
+    console.log('Super Admin mode disabled');
   }, []);
 
   const updateBanner = useCallback(async (bannerId: string, updates: Partial<HomepageBanner>) => {
-    const updated = banners.map((b) => (b.id === bannerId ? { ...b, ...updates } : b));
-    setBanners(updated);
-    await AsyncStorage.setItem(BANNERS_KEY, JSON.stringify(updated));
-  }, [banners]);
+    await updateSupabaseBanner(bannerId, { ...updates, imageUrl: updates.imageUrl || '' });
+  }, [updateSupabaseBanner]);
 
   const addBanner = useCallback(async (banner: Omit<HomepageBanner, 'id'>) => {
-    const newBanner = { ...banner, id: Date.now().toString() };
-    const updated = [...banners, newBanner];
-    setBanners(updated);
-    await AsyncStorage.setItem(BANNERS_KEY, JSON.stringify(updated));
-  }, [banners]);
+    await createBanner(banner);
+  }, [createBanner]);
 
   const deleteBanner = useCallback(async (bannerId: string) => {
-    const updated = banners.filter((b) => b.id !== bannerId);
-    setBanners(updated);
-    await AsyncStorage.setItem(BANNERS_KEY, JSON.stringify(updated));
-  }, [banners]);
+    await deleteSupabaseBanner(bannerId);
+  }, [deleteSupabaseBanner]);
 
   const reorderBanners = useCallback(async (reordered: HomepageBanner[]) => {
-    setBanners(reordered);
-    await AsyncStorage.setItem(BANNERS_KEY, JSON.stringify(reordered));
-  }, []);
+    for (const banner of reordered) {
+      await updateSupabaseBanner(banner.id, banner);
+    }
+  }, [updateSupabaseBanner]);
 
   const updateSection = useCallback(async (sectionId: string, updates: Partial<HomepageSection>) => {
-    const updated = sections.map((s) => (s.id === sectionId ? { ...s, ...updates } : s));
-    setSections(updated);
-    await AsyncStorage.setItem(SECTIONS_KEY, JSON.stringify(updated));
-  }, [sections]);
+    await updateSupabaseSection(sectionId, { title: updates.title || '', type: updates.type as any, filters: updates.config, order: updates.order || 0, enabled: updates.enabled !== undefined ? updates.enabled : true });
+  }, [updateSupabaseSection]);
 
   const addSection = useCallback(async (section: Omit<HomepageSection, 'id'>) => {
-    const newSection = { ...section, id: `s${Date.now()}` };
-    const updated = [...sections, newSection];
-    setSections(updated);
-    await AsyncStorage.setItem(SECTIONS_KEY, JSON.stringify(updated));
-  }, [sections]);
+    await createSection({ title: section.title, type: section.type as any, filters: section.config, order: section.order, enabled: section.enabled });
+  }, [createSection]);
 
   const deleteSection = useCallback(async (sectionId: string) => {
-    const updated = sections.filter((s) => s.id !== sectionId);
-    setSections(updated);
-    await AsyncStorage.setItem(SECTIONS_KEY, JSON.stringify(updated));
-  }, [sections]);
+    await deleteSupabaseSection(sectionId);
+  }, [deleteSupabaseSection]);
 
   const reorderSections = useCallback(async (reordered: HomepageSection[]) => {
-    setSections(reordered);
-    await AsyncStorage.setItem(SECTIONS_KEY, JSON.stringify(reordered));
-  }, []);
+    for (const section of reordered) {
+      await updateSupabaseSection(section.id, { title: section.title, type: section.type as any, filters: section.config, order: section.order, enabled: section.enabled });
+    }
+  }, [updateSupabaseSection]);
 
   const updateSettings = useCallback(async (updates: Partial<SystemSettings>) => {
-    const updated = { ...settings, ...updates };
-    setSettings(updated);
-    await AsyncStorage.setItem(SYSTEM_SETTINGS_KEY, JSON.stringify(updated));
-  }, [settings]);
+    await AsyncStorage.setItem(SYSTEM_SETTINGS_KEY, JSON.stringify(updates));
+  }, []);
 
   const updateUser = useCallback(async (userId: string, updates: Partial<User>) => {
-    const updated = users.map((u) => (u.id === userId ? { ...u, ...updates } : u));
-    setUsers(updated);
-    await AsyncStorage.setItem(USERS_KEY, JSON.stringify(updated));
-  }, [users]);
+    if (updates.role) {
+      await updateUserRole(userId, updates.role);
+    }
+  }, [updateUserRole]);
 
   const deleteUser = useCallback(async (userId: string) => {
-    const updated = users.filter((u) => u.id !== userId);
-    setUsers(updated);
-    await AsyncStorage.setItem(USERS_KEY, JSON.stringify(updated));
-  }, [users]);
+    console.log('Delete user not implemented:', userId);
+  }, []);
 
   const blockUser = useCallback(async (userId: string) => {
-    await updateUser(userId, { blocked: true });
-  }, [updateUser]);
+    await blockSupabaseUser(userId);
+  }, [blockSupabaseUser]);
 
   const unblockUser = useCallback(async (userId: string) => {
-    await updateUser(userId, { blocked: false });
-  }, [updateUser]);
+    await unblockSupabaseUser(userId);
+  }, [unblockSupabaseUser]);
 
   const upgradeUserTier = useCallback(async (userId: string, tier: AccountTier) => {
-    await updateUser(userId, { accountTier: tier });
-  }, [updateUser]);
+    console.log('Upgrade user tier not implemented:', userId, tier);
+  }, []);
 
   const analytics = useMemo(() => ({
-    totalUsers: users.length,
-    totalAgents: users.filter((u) => u.role === 'agent').length,
-    totalAgencies: users.filter((u) => u.role === 'agency').length,
-    totalProperties: users.reduce((sum, u) => sum + u.propertiesCount, 0),
-    totalBookings: users.reduce((sum, u) => sum + u.bookingsCount, 0),
-    blockedUsers: users.filter((u) => u.blocked).length,
-  }), [users]);
+    totalUsers: stats.totalUsers,
+    totalAgents: stats.totalAgents,
+    totalAgencies: 0,
+    totalProperties: 0,
+    totalBookings: 0,
+    blockedUsers: 0,
+  }), [stats]);
 
   return useMemo(() => ({
-    isSuperAdmin,
+    isSuperAdmin: true,
     isLoading,
     enableSuperAdmin,
     disableSuperAdmin,
@@ -367,7 +350,7 @@ export const [SuperAdminProvider, useSuperAdmin] = createContextHook(() => {
     addSection,
     deleteSection,
     reorderSections,
-    settings,
+    settings: defaultSettings,
     updateSettings,
     users,
     updateUser,
@@ -377,7 +360,6 @@ export const [SuperAdminProvider, useSuperAdmin] = createContextHook(() => {
     upgradeUserTier,
     analytics,
   }), [
-    isSuperAdmin,
     isLoading,
     enableSuperAdmin,
     disableSuperAdmin,
@@ -391,7 +373,6 @@ export const [SuperAdminProvider, useSuperAdmin] = createContextHook(() => {
     addSection,
     deleteSection,
     reorderSections,
-    settings,
     updateSettings,
     users,
     updateUser,

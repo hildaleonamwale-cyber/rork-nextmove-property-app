@@ -1,82 +1,67 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import createContextHook from '@nkzw/create-context-hook';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BookingCardData, BookingStatus } from '@/components/BookingCard';
-
-const BOOKINGS_KEY = '@chat_bookings';
+import { useSupabaseBookings } from '@/hooks/useSupabaseBookings';
+import { useUser } from './UserContext';
 
 export const [BookingProvider, useBookings] = createContextHook(() => {
-  const [bookings, setBookings] = useState<BookingCardData[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const { user } = useUser();
+  const { 
+    bookings: supabaseBookings, 
+    isLoading, 
+    createBooking, 
+    updateBookingStatus: updateStatus,
+    refetch 
+  } = useSupabaseBookings(user?.id);
 
-  const loadBookings = useCallback(async () => {
+  const bookings: BookingCardData[] = supabaseBookings.map((booking) => ({
+    id: booking.id,
+    propertyId: booking.propertyId,
+    propertyTitle: booking.propertyTitle,
+    propertyImage: booking.propertyImage,
+    date: booking.visitDate.toISOString().split('T')[0],
+    time: booking.visitTime,
+    clientName: booking.userName,
+    status: booking.status as BookingStatus,
+  }));
+
+  const addBooking = useCallback(async (booking: Omit<BookingCardData, 'id' | 'status'>) => {
     try {
-      setIsLoading(true);
-      const stored = await AsyncStorage.getItem(BOOKINGS_KEY);
-      if (stored) {
-        setBookings(JSON.parse(stored));
-      }
+      await createBooking({
+        propertyId: booking.propertyId,
+        visitDate: new Date(booking.date),
+        visitTime: booking.time,
+      });
+      console.log('Booking added successfully');
     } catch (error) {
-      console.error('Failed to load bookings:', error);
-    } finally {
-      setIsLoading(false);
+      console.error('Failed to add booking:', error);
+      throw error;
     }
-  }, []);
+  }, [createBooking]);
 
-  const saveBookings = useCallback(async (newBookings: BookingCardData[]) => {
+  const updateBookingStatus = useCallback(async (bookingId: string, status: BookingStatus) => {
     try {
-      await AsyncStorage.setItem(BOOKINGS_KEY, JSON.stringify(newBookings));
-      setBookings(newBookings);
-    } catch (error) {
-      console.error('Failed to save bookings:', error);
-    }
-  }, []);
-
-  const addBooking = useCallback(
-    async (booking: Omit<BookingCardData, 'id' | 'status'>) => {
-      const newBooking: BookingCardData = {
-        ...booking,
-        id: Date.now().toString(),
-        status: 'pending',
-      };
-      const updated = [...bookings, newBooking];
-      await saveBookings(updated);
-      console.log('Booking added:', newBooking);
-      return newBooking;
-    },
-    [bookings, saveBookings]
-  );
-
-  const updateBookingStatus = useCallback(
-    async (bookingId: string, status: BookingStatus) => {
-      const updated = bookings.map((b) =>
-        b.id === bookingId ? { ...b, status } : b
-      );
-      await saveBookings(updated);
+      await updateStatus(bookingId, status);
       console.log('Booking status updated:', bookingId, status);
-    },
-    [bookings, saveBookings]
-  );
+    } catch (error) {
+      console.error('Failed to update booking status:', error);
+      throw error;
+    }
+  }, [updateStatus]);
 
-  const getBookingById = useCallback(
-    (bookingId: string) => {
-      return bookings.find((b) => b.id === bookingId);
-    },
-    [bookings]
-  );
+  const getBookingById = useCallback((bookingId: string) => {
+    return bookings.find((b) => b.id === bookingId);
+  }, [bookings]);
 
-  const getBookingsByProperty = useCallback(
-    (propertyId: string) => {
-      return bookings.filter((b) => b.propertyId === propertyId);
-    },
-    [bookings]
-  );
+  const getBookingsByProperty = useCallback((propertyId: string) => {
+    return bookings.filter((b) => b.propertyId === propertyId);
+  }, [bookings]);
 
   return useMemo(
     () => ({
       bookings,
       isLoading,
-      loadBookings,
+      loadBookings: refetch,
       addBooking,
       updateBookingStatus,
       getBookingById,
@@ -85,7 +70,7 @@ export const [BookingProvider, useBookings] = createContextHook(() => {
     [
       bookings,
       isLoading,
-      loadBookings,
+      refetch,
       addBooking,
       updateBookingStatus,
       getBookingById,
