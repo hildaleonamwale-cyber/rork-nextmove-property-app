@@ -29,11 +29,22 @@ export interface LoginParams {
 const USER_PROFILE_KEY = '@user_profile';
 
 async function ensureSession() {
-  let session = (await supabase.auth.getSession()).data.session;
+  let { data: { session }, error } = await supabase.auth.getSession();
+  
+  if (error) {
+    console.error('Error getting session:', error);
+  }
   
   if (!session) {
-    await new Promise(resolve => setTimeout(resolve, 100));
-    session = (await supabase.auth.getSession()).data.session;
+    console.log('No active session, attempting to refresh...');
+    const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
+    
+    if (refreshError) {
+      console.error('Failed to refresh session:', refreshError);
+      return null;
+    }
+    
+    session = refreshedSession;
   }
   
   return session;
@@ -240,19 +251,8 @@ export async function getCurrentUser(skipCache: boolean = false): Promise<Supaba
 export async function updateProfile(updates: { name?: string; phone?: string }): Promise<SupabaseUser> {
   const session = await ensureSession();
 
-  if (!session || !session.user) {
-    console.error('No active session found');
-    console.log('Attempting to refresh session...');
-    
-    const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
-    
-    if (refreshError || !refreshedSession) {
-      console.error('Session refresh failed:', refreshError);
-      throw new Error('Not authenticated. Please log in again.');
-    }
-    
-    console.log('Session refreshed successfully');
-    return updateProfile(updates);
+  if (!session?.user) {
+    throw new Error('Not authenticated. Please log in again.');
   }
 
   const { data: profile, error } = await supabase
@@ -292,19 +292,8 @@ export async function clearUserCache(): Promise<void> {
 export async function uploadAvatar(base64Image: string): Promise<string> {
   const session = await ensureSession();
 
-  if (!session || !session.user) {
-    console.error('No active session found');
-    console.log('Attempting to refresh session...');
-    
-    const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
-    
-    if (refreshError || !refreshedSession) {
-      console.error('Session refresh failed:', refreshError);
-      throw new Error('Not authenticated. Please log in again.');
-    }
-    
-    console.log('Session refreshed successfully');
-    return uploadAvatar(base64Image);
+  if (!session?.user) {
+    throw new Error('Not authenticated. Please log in again.');
   }
 
   const fileName = `${session.user.id}-${Date.now()}.jpg`;

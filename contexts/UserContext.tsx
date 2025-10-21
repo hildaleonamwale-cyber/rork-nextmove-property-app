@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import createContextHook from "@nkzw/create-context-hook";
 import { getCurrentUser, updateProfile as updateProfileSupabase, uploadAvatar as uploadAvatarSupabase, SupabaseUser } from "@/utils/supabase-auth";
+import { supabase } from "@/lib/supabase";
 
 export type User = SupabaseUser;
 
@@ -11,6 +12,22 @@ export const [UserProvider, useUser] = createContextHook(() => {
 
   useEffect(() => {
     loadUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event);
+      
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        console.log('Session active, loading user...');
+        await loadUser(true);
+      } else if (event === 'SIGNED_OUT') {
+        console.log('User signed out');
+        setUser(null);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const loadUser = async (skipCache: boolean = false) => {
