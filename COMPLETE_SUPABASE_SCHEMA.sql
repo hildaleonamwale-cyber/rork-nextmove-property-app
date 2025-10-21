@@ -17,6 +17,11 @@ DROP TABLE IF EXISTS banners CASCADE;
 DROP TABLE IF EXISTS sessions CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 
+-- Drop views if they exist
+DROP VIEW IF EXISTS user_stats CASCADE;
+DROP VIEW IF EXISTS property_stats CASCADE;
+DROP VIEW IF EXISTS agent_analytics CASCADE;
+
 -- Enable UUID extension if not already enabled
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
@@ -38,7 +43,6 @@ CREATE TABLE users (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Create index on email for faster lookups
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_role ON users(role);
 
@@ -298,82 +302,313 @@ ALTER TABLE homepage_sections ENABLE ROW LEVEL SECURITY;
 ALTER TABLE staff ENABLE ROW LEVEL SECURITY;
 ALTER TABLE managed_properties ENABLE ROW LEVEL SECURITY;
 
--- Users policies
-CREATE POLICY "Users can read own data" ON users FOR SELECT USING (auth.uid() = id);
-CREATE POLICY "Users can update own data" ON users FOR UPDATE USING (auth.uid() = id);
-CREATE POLICY "Public can read basic user info" ON users FOR SELECT USING (true);
+-- ============================================
+-- USERS TABLE POLICIES
+-- ============================================
+CREATE POLICY "users_select_own" ON users 
+  FOR SELECT 
+  USING (auth.uid() = id);
 
--- Sessions policies
-CREATE POLICY "Users can manage own sessions" ON sessions FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "users_select_public_info" ON users 
+  FOR SELECT 
+  USING (true);
 
--- Agents policies
-CREATE POLICY "Anyone can read agents" ON agents FOR SELECT USING (true);
-CREATE POLICY "Users can create own agent profile" ON agents FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update own agent profile" ON agents FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "Users can delete own agent profile" ON agents FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "users_insert_own" ON users 
+  FOR INSERT 
+  WITH CHECK (auth.uid() = id);
 
--- Properties policies
-CREATE POLICY "Anyone can read properties" ON properties FOR SELECT USING (true);
-CREATE POLICY "Agents can create properties" ON properties FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Agents can update own properties" ON properties FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "Agents can delete own properties" ON properties FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "users_update_own" ON users 
+  FOR UPDATE 
+  USING (auth.uid() = id);
 
--- Bookings policies
-CREATE POLICY "Users can read own bookings" ON bookings FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can create bookings" ON bookings FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Property owners can read property bookings" ON bookings FOR SELECT USING (
-  EXISTS (
-    SELECT 1 FROM properties WHERE properties.id = bookings.property_id AND properties.user_id = auth.uid()
-  )
-);
-CREATE POLICY "Property owners can update property bookings" ON bookings FOR UPDATE USING (
-  EXISTS (
-    SELECT 1 FROM properties WHERE properties.id = bookings.property_id AND properties.user_id = auth.uid()
-  )
-);
+CREATE POLICY "admins_manage_users" ON users 
+  FOR ALL 
+  USING (
+    EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND users.role = 'admin')
+  );
 
--- Messages policies
-CREATE POLICY "Users can read own messages" ON messages FOR SELECT USING (
-  auth.uid() = sender_id OR auth.uid() = receiver_id
-);
-CREATE POLICY "Users can send messages" ON messages FOR INSERT WITH CHECK (auth.uid() = sender_id);
-CREATE POLICY "Users can update own messages" ON messages FOR UPDATE USING (auth.uid() = receiver_id);
+-- ============================================
+-- SESSIONS TABLE POLICIES
+-- ============================================
+CREATE POLICY "sessions_select_own" ON sessions 
+  FOR SELECT 
+  USING (auth.uid() = user_id);
 
--- Notifications policies
-CREATE POLICY "Users can read own notifications" ON notifications FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can update own notifications" ON notifications FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "Users can delete own notifications" ON notifications FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "sessions_insert_own" ON sessions 
+  FOR INSERT 
+  WITH CHECK (auth.uid() = user_id);
 
--- Wishlists policies
-CREATE POLICY "Users can manage own wishlist" ON wishlists FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "sessions_update_own" ON sessions 
+  FOR UPDATE 
+  USING (auth.uid() = user_id);
 
--- Banners policies (public read, admin write)
-CREATE POLICY "Anyone can read enabled banners" ON banners FOR SELECT USING (enabled = true);
-CREATE POLICY "Admins can manage banners" ON banners FOR ALL USING (
-  EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND users.role = 'admin')
-);
+CREATE POLICY "sessions_delete_own" ON sessions 
+  FOR DELETE 
+  USING (auth.uid() = user_id);
 
--- Homepage sections policies (public read, admin write)
-CREATE POLICY "Anyone can read enabled sections" ON homepage_sections FOR SELECT USING (enabled = true);
-CREATE POLICY "Admins can manage sections" ON homepage_sections FOR ALL USING (
-  EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND users.role = 'admin')
-);
+-- ============================================
+-- AGENTS TABLE POLICIES
+-- ============================================
+CREATE POLICY "agents_select_all" ON agents 
+  FOR SELECT 
+  USING (true);
 
--- Staff policies
-CREATE POLICY "Agents can read own staff" ON staff FOR SELECT USING (
-  EXISTS (SELECT 1 FROM agents WHERE agents.id = staff.agent_id AND agents.user_id = auth.uid())
-);
-CREATE POLICY "Agents can manage own staff" ON staff FOR ALL USING (
-  EXISTS (SELECT 1 FROM agents WHERE agents.id = staff.agent_id AND agents.user_id = auth.uid())
-);
+CREATE POLICY "agents_insert_own" ON agents 
+  FOR INSERT 
+  WITH CHECK (auth.uid() = user_id);
 
--- Managed properties policies
-CREATE POLICY "Agents can read own managed properties" ON managed_properties FOR SELECT USING (
-  EXISTS (SELECT 1 FROM agents WHERE agents.id = managed_properties.agent_id AND agents.user_id = auth.uid())
-);
-CREATE POLICY "Agents can manage own managed properties" ON managed_properties FOR ALL USING (
-  EXISTS (SELECT 1 FROM agents WHERE agents.id = managed_properties.agent_id AND agents.user_id = auth.uid())
-);
+CREATE POLICY "agents_update_own" ON agents 
+  FOR UPDATE 
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "agents_delete_own" ON agents 
+  FOR DELETE 
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "admins_manage_agents" ON agents 
+  FOR ALL 
+  USING (
+    EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND users.role = 'admin')
+  );
+
+-- ============================================
+-- PROPERTIES TABLE POLICIES
+-- ============================================
+CREATE POLICY "properties_select_all" ON properties 
+  FOR SELECT 
+  USING (true);
+
+CREATE POLICY "properties_insert_own" ON properties 
+  FOR INSERT 
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "properties_update_own" ON properties 
+  FOR UPDATE 
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "properties_delete_own" ON properties 
+  FOR DELETE 
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "admins_manage_properties" ON properties 
+  FOR ALL 
+  USING (
+    EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND users.role = 'admin')
+  );
+
+-- ============================================
+-- BOOKINGS TABLE POLICIES
+-- ============================================
+CREATE POLICY "bookings_select_own" ON bookings 
+  FOR SELECT 
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "bookings_select_property_owner" ON bookings 
+  FOR SELECT 
+  USING (
+    EXISTS (
+      SELECT 1 FROM properties 
+      WHERE properties.id = bookings.property_id 
+      AND properties.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "bookings_insert_own" ON bookings 
+  FOR INSERT 
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "bookings_update_own" ON bookings 
+  FOR UPDATE 
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "bookings_update_property_owner" ON bookings 
+  FOR UPDATE 
+  USING (
+    EXISTS (
+      SELECT 1 FROM properties 
+      WHERE properties.id = bookings.property_id 
+      AND properties.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "admins_manage_bookings" ON bookings 
+  FOR ALL 
+  USING (
+    EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND users.role = 'admin')
+  );
+
+-- ============================================
+-- MESSAGES TABLE POLICIES
+-- ============================================
+CREATE POLICY "messages_select_own" ON messages 
+  FOR SELECT 
+  USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
+
+CREATE POLICY "messages_insert_as_sender" ON messages 
+  FOR INSERT 
+  WITH CHECK (auth.uid() = sender_id);
+
+CREATE POLICY "messages_update_as_receiver" ON messages 
+  FOR UPDATE 
+  USING (auth.uid() = receiver_id);
+
+-- ============================================
+-- NOTIFICATIONS TABLE POLICIES
+-- ============================================
+CREATE POLICY "notifications_select_own" ON notifications 
+  FOR SELECT 
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "notifications_update_own" ON notifications 
+  FOR UPDATE 
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "notifications_delete_own" ON notifications 
+  FOR DELETE 
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "system_create_notifications" ON notifications 
+  FOR INSERT 
+  WITH CHECK (true);
+
+-- ============================================
+-- WISHLISTS TABLE POLICIES
+-- ============================================
+CREATE POLICY "wishlists_select_own" ON wishlists 
+  FOR SELECT 
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "wishlists_insert_own" ON wishlists 
+  FOR INSERT 
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "wishlists_delete_own" ON wishlists 
+  FOR DELETE 
+  USING (auth.uid() = user_id);
+
+-- ============================================
+-- BANNERS TABLE POLICIES
+-- ============================================
+CREATE POLICY "banners_select_enabled" ON banners 
+  FOR SELECT 
+  USING (enabled = true);
+
+CREATE POLICY "banners_select_all_admin" ON banners 
+  FOR SELECT 
+  USING (
+    EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND users.role = 'admin')
+  );
+
+CREATE POLICY "admins_manage_banners" ON banners 
+  FOR ALL 
+  USING (
+    EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND users.role = 'admin')
+  );
+
+-- ============================================
+-- HOMEPAGE SECTIONS TABLE POLICIES
+-- ============================================
+CREATE POLICY "sections_select_enabled" ON homepage_sections 
+  FOR SELECT 
+  USING (enabled = true);
+
+CREATE POLICY "sections_select_all_admin" ON homepage_sections 
+  FOR SELECT 
+  USING (
+    EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND users.role = 'admin')
+  );
+
+CREATE POLICY "admins_manage_sections" ON homepage_sections 
+  FOR ALL 
+  USING (
+    EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND users.role = 'admin')
+  );
+
+-- ============================================
+-- STAFF TABLE POLICIES
+-- ============================================
+CREATE POLICY "staff_select_by_agent" ON staff 
+  FOR SELECT 
+  USING (
+    EXISTS (
+      SELECT 1 FROM agents 
+      WHERE agents.id = staff.agent_id 
+      AND agents.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "staff_insert_by_agent" ON staff 
+  FOR INSERT 
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM agents 
+      WHERE agents.id = staff.agent_id 
+      AND agents.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "staff_update_by_agent" ON staff 
+  FOR UPDATE 
+  USING (
+    EXISTS (
+      SELECT 1 FROM agents 
+      WHERE agents.id = staff.agent_id 
+      AND agents.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "staff_delete_by_agent" ON staff 
+  FOR DELETE 
+  USING (
+    EXISTS (
+      SELECT 1 FROM agents 
+      WHERE agents.id = staff.agent_id 
+      AND agents.user_id = auth.uid()
+    )
+  );
+
+-- ============================================
+-- MANAGED PROPERTIES TABLE POLICIES
+-- ============================================
+CREATE POLICY "managed_properties_select_by_agent" ON managed_properties 
+  FOR SELECT 
+  USING (
+    EXISTS (
+      SELECT 1 FROM agents 
+      WHERE agents.id = managed_properties.agent_id 
+      AND agents.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "managed_properties_insert_by_agent" ON managed_properties 
+  FOR INSERT 
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM agents 
+      WHERE agents.id = managed_properties.agent_id 
+      AND agents.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "managed_properties_update_by_agent" ON managed_properties 
+  FOR UPDATE 
+  USING (
+    EXISTS (
+      SELECT 1 FROM agents 
+      WHERE agents.id = managed_properties.agent_id 
+      AND agents.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "managed_properties_delete_by_agent" ON managed_properties 
+  FOR DELETE 
+  USING (
+    EXISTS (
+      SELECT 1 FROM agents 
+      WHERE agents.id = managed_properties.agent_id 
+      AND agents.user_id = auth.uid()
+    )
+  );
 
 -- ============================================
 -- FUNCTIONS AND TRIGGERS
@@ -491,7 +726,15 @@ DO $$
 BEGIN
   RAISE NOTICE '✅ Schema created successfully!';
   RAISE NOTICE '📊 Tables: users, sessions, agents, properties, bookings, messages, notifications, wishlists, banners, homepage_sections, staff, managed_properties';
-  RAISE NOTICE '🔒 RLS policies enabled on all tables';
+  RAISE NOTICE '🔒 RLS policies enabled on all tables with comprehensive security';
+  RAISE NOTICE '   - Users: Own data + public read + admin manage';
+  RAISE NOTICE '   - Agents: Public read + own CRUD + admin manage';
+  RAISE NOTICE '   - Properties: Public read + owner CRUD + admin manage';
+  RAISE NOTICE '   - Bookings: Own + property owner access + admin manage';
+  RAISE NOTICE '   - Wishlists: Own data only';
+  RAISE NOTICE '   - Messages: Sender/receiver only';
+  RAISE NOTICE '   - Staff: Agent-owned only';
+  RAISE NOTICE '   - Managed Properties: Agent-owned only';
   RAISE NOTICE '🔄 Auto-update triggers configured';
   RAISE NOTICE '📈 Analytics views created';
 END $$;
