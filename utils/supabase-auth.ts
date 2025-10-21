@@ -55,33 +55,37 @@ export async function signup(params: SignupParams): Promise<{ user: SupabaseUser
 
   let profile = null;
   let attempts = 0;
-  const maxAttempts = 10;
+  const maxAttempts = 15;
+  const baseDelay = 300;
 
   while (!profile && attempts < maxAttempts) {
     attempts++;
     
-    await new Promise(resolve => setTimeout(resolve, attempts * 200));
+    const delay = baseDelay * Math.min(attempts, 3);
+    await new Promise(resolve => setTimeout(resolve, delay));
+    
+    console.log(`Checking for profile... attempt ${attempts}/${maxAttempts}`);
     
     const { data, error } = await supabase
       .from('users')
-      .select()
+      .select('*')
       .eq('id', authData.user.id)
       .single();
 
-    if (!error && data) {
+    if (data) {
       profile = data;
       console.log('Profile found after', attempts, 'attempts');
       break;
     }
 
-    if (attempts === maxAttempts) {
-      console.error('Profile creation timeout after', maxAttempts, 'attempts');
-      throw new Error('Profile creation is taking longer than expected. Please try logging in.');
+    if (error && !error.message.includes('No rows')) {
+      console.error('Profile fetch error:', error);
     }
   }
 
   if (!profile) {
-    throw new Error('Failed to create user profile');
+    console.error('Profile creation timeout after', maxAttempts, 'attempts');
+    throw new Error('Account created but profile setup is delayed. Please wait a moment and try logging in.');
   }
 
   const user: SupabaseUser = {

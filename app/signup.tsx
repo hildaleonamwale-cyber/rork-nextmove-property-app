@@ -97,6 +97,18 @@ export default function SignupScreen() {
           ]
         );
         return;
+      } else if (error.message?.includes('profile setup is delayed')) {
+        Alert.alert(
+          'Almost There!',
+          'Your account has been created. Please wait a moment and then log in with your credentials.',
+          [
+            {
+              text: 'Go to Login',
+              onPress: () => router.push('/login' as any),
+            },
+          ]
+        );
+        return;
       } else if (error.message) {
         errorMessage = error.message;
       }
