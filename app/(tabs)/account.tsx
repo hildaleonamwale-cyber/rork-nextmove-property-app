@@ -25,7 +25,7 @@ import { DesignSystem } from '@/constants/designSystem';
 import { useUserMode } from '@/contexts/UserModeContext';
 import { useAgentProfile } from '@/contexts/AgentProfileContext';
 import { useUser } from '@/contexts/UserContext';
-import { OptimizedImage } from '@/components/OptimizedImage';
+import OptimizedImage from '@/components/OptimizedImage';
 import { useSuperAdmin } from '@/contexts/SuperAdminContext';
 import UniformHeader from '@/components/UniformHeader';
 
@@ -121,7 +121,7 @@ export default function AccountScreen() {
             <OptimizedImage 
               source={{ uri: user.avatar }}
               style={styles.avatar}
-              resizeMode="cover"
+              contentFit="cover"
             />
           ) : (
             <View style={styles.avatar}>
