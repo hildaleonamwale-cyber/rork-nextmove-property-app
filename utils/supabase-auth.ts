@@ -168,8 +168,15 @@ export async function getCurrentUser(skipCache: boolean = false): Promise<Supaba
     .eq('id', session.user.id)
     .single();
 
-  if (error || !profile) {
-    console.error('Failed to fetch user profile:', error);
+  if (error) {
+    console.error('Error fetching user profile:', error);
+    await supabase.auth.signOut();
+    await AsyncStorage.removeItem(USER_PROFILE_KEY);
+    return null;
+  }
+
+  if (!profile) {
+    console.error('Failed to fetch user profile: Profile not found');
     return null;
   }
 

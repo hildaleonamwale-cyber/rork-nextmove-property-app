@@ -66,7 +66,8 @@ export default function PropertyDetailScreen() {
   const insets = useSafeAreaInsets();
   const { addBooking } = useBookings();
 
-  const { property: propertyData, isLoading } = useSupabaseProperty(id as string);
+  const propertyId = typeof id === 'string' ? id : Array.isArray(id) ? id[0] : '';
+  const { property: propertyData, isLoading } = useSupabaseProperty(propertyId);
 
   const listing = propertyData;
   const agent = mockAgents.find((a) => a.id === listing?.agentId);

@@ -56,8 +56,13 @@ export function useSupabaseBookings(userId?: string, agentId?: string) {
 
       let query = supabase
         .from('bookings')
-        .select('*, properties(title, images), users(name, email, phone), agents!agent_id(user_id, company_name)')
-        .order('visit_date', { ascending: true });
+        .select(`
+          *,
+          properties(title, images),
+          users(name, email, phone),
+          agents(user_id, company_name)
+        `)
+        .order('created_at', { ascending: false });
 
       if (userId) {
         query = query.eq('user_id', userId);
@@ -94,18 +99,30 @@ export function useSupabaseBookings(userId?: string, agentId?: string) {
 
     const { data: property, error: propertyError } = await supabase
       .from('properties')
-      .select('agent_id')
+      .select('agent_id, title')
       .eq('id', params.propertyId)
       .single();
 
     if (propertyError) throw new Error('Property not found');
 
+    const { data: user } = await supabase
+      .from('users')
+      .select('name, email, phone')
+      .eq('id', session.user.id)
+      .single();
+
     const { error } = await supabase.from('bookings').insert({
       property_id: params.propertyId,
       user_id: session.user.id,
       agent_id: property.agent_id,
+      property_title: property.title,
       visit_date: params.visitDate.toISOString(),
       visit_time: params.visitTime,
+      client_name: user?.name || 'User',
+      client_email: user?.email || '',
+      client_phone: user?.phone || '',
+      date: params.visitDate.toLocaleDateString(),
+      time: params.visitTime,
       notes: params.notes,
       status: 'pending',
     });

@@ -35,7 +35,7 @@ export function useSupabaseProperties(filters?: PropertyFilters) {
         .from('properties')
         .select(`
           id, title, description, property_type, listing_category, status,
-          price, listing_type, images, beds, baths, area, address, city, suburb,
+          price, listing_type, images, bedrooms, bathrooms, beds, baths, area, address, city, suburb,
           province, country, coordinates, featured, verified, views, bookings,
           inquiries, amenities, agent_id, user_id, created_at
         `, { count: 'exact' });
@@ -127,7 +127,7 @@ export function useSupabaseProperty(id: string) {
         .from('properties')
         .select(`
           id, title, description, property_type, listing_category, status,
-          price, listing_type, images, beds, baths, area, address, city, suburb,
+          price, listing_type, images, bedrooms, bathrooms, beds, baths, area, address, city, suburb,
           province, country, coordinates, featured, verified, views, bookings,
           inquiries, amenities, agent_id, user_id, created_at
         `)
@@ -215,8 +215,8 @@ function transformProperty(data: any): Listing {
 
   return {
     ...base,
-    bedrooms: data.beds || 0,
-    bathrooms: data.baths || 0,
+    bedrooms: data.bedrooms || data.beds || 0,
+    bathrooms: data.bathrooms || data.baths || 0,
     propertyType: data.property_type as any,
     amenities: data.amenities || [],
   } as any;
