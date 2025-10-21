@@ -2,6 +2,7 @@ import { useMemo, useCallback } from 'react';
 import createContextHook from '@nkzw/create-context-hook';
 import { AgentProfile as ImportedAgentProfile, AgentPackage, PropertyDraft, BookingSlot, AgentUpdate, StaffMember as ImportedStaffMember, ManagedProperty as ImportedManagedProperty } from '@/types/property';
 import { useSupabaseAgent, useSupabaseManagedProperties, useSupabaseStaff, StaffMember as SupabaseStaff } from '@/hooks/useSupabaseAgent';
+import { useSupabaseBookingSlots } from '@/hooks/useSupabaseBookingSlots';
 import { useUser } from './UserContext';
 
 export const [AgentProfileProvider, useAgentProfile] = createContextHook(() => {
@@ -9,8 +10,9 @@ export const [AgentProfileProvider, useAgentProfile] = createContextHook(() => {
   const { agent, isLoading: agentLoading, createAgent, updateAgent, refetch: refetchAgent } = useSupabaseAgent(user?.id);
   const { properties: managedProperties, isLoading: managedLoading, createProperty: createManagedProperty, updateProperty: updateManagedProperty, deleteProperty: deleteManagedProperty } = useSupabaseManagedProperties(agent?.id);
   const { staff, isLoading: staffLoading, addStaff: addSupabaseStaff, updateStaff: updateSupabaseStaff, removeStaff: removeSupabaseStaff } = useSupabaseStaff(agent?.id);
+  const { bookingSlots, isLoading: slotsLoading, addBookingSlot: addSupabaseSlot, updateBookingSlot: updateSupabaseSlot, deleteBookingSlot: deleteSupabaseSlot } = useSupabaseBookingSlots(agent?.id);
 
-  const isLoading = userLoading || agentLoading || managedLoading || staffLoading;
+  const isLoading = userLoading || agentLoading || managedLoading || staffLoading || slotsLoading;
 
   const profile: ImportedAgentProfile = useMemo(() => {
     if (!agent || !user) {
@@ -61,7 +63,7 @@ export const [AgentProfileProvider, useAgentProfile] = createContextHook(() => {
       },
       updates: [],
       staff: staff.map(transformStaffToLocal),
-      bookingSlots: [],
+      bookingSlots: bookingSlots,
       analytics: {
         views: { total: 0, thisMonth: 0, trend: 0 },
         inquiries: { total: 0, thisMonth: 0, trend: 0 },
@@ -73,7 +75,7 @@ export const [AgentProfileProvider, useAgentProfile] = createContextHook(() => {
       verified: user.verified,
       profileCards: [],
     };
-  }, [agent, user, staff]);
+  }, [agent, user, staff, bookingSlots]);
 
   const updateProfile = useCallback(async (updates: Partial<ImportedAgentProfile>) => {
     console.log('AgentProfileContext updateProfile called with:', updates);
@@ -210,16 +212,16 @@ export const [AgentProfileProvider, useAgentProfile] = createContextHook(() => {
   }, [updateManagedProperty]);
 
   const addBookingSlot = useCallback(async (slot: Omit<BookingSlot, 'id'>) => {
-    console.log('Booking slots not yet implemented in Supabase');
-  }, []);
+    await addSupabaseSlot(slot);
+  }, [addSupabaseSlot]);
 
   const updateBookingSlot = useCallback(async (id: string, updates: Partial<BookingSlot>) => {
-    console.log('Booking slots not yet implemented in Supabase');
-  }, []);
+    await updateSupabaseSlot(id, updates);
+  }, [updateSupabaseSlot]);
 
   const deleteBookingSlot = useCallback(async (id: string) => {
-    console.log('Booking slots not yet implemented in Supabase');
-  }, []);
+    await deleteSupabaseSlot(id);
+  }, [deleteSupabaseSlot]);
 
   const addUpdate = useCallback(async (update: Omit<AgentUpdate, 'id' | 'timestamp'>) => {
     console.log('Agent updates not yet implemented in Supabase');

@@ -10,6 +10,26 @@ export function useSupabaseWishlist(userId: string) {
   useEffect(() => {
     if (userId) {
       fetchWishlist();
+
+      const channel = supabase
+        .channel('wishlist-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'wishlists',
+            filter: `user_id=eq.${userId}`,
+          },
+          () => {
+            fetchWishlist();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
@@ -60,8 +80,6 @@ export function useSupabaseWishlist(userId: string) {
       console.error('Add to wishlist error:', error);
       throw new Error(error.message);
     }
-
-    await fetchWishlist();
   };
 
   const removeFromWishlist = async (propertyId: string) => {
@@ -75,8 +93,6 @@ export function useSupabaseWishlist(userId: string) {
       console.error('Remove from wishlist error:', error);
       throw new Error(error.message);
     }
-
-    await fetchWishlist();
   };
 
   const isInWishlist = (propertyId: string) => {
