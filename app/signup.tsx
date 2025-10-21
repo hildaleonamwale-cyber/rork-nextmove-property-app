@@ -82,7 +82,21 @@ export default function SignupScreen() {
       let errorMessage = 'An error occurred during signup';
       
       if (error.message?.includes('User already registered')) {
-        errorMessage = 'An account with this email already exists';
+        Alert.alert(
+          'Account Already Exists',
+          'An account with this email already exists. Would you like to log in instead?',
+          [
+            {
+              text: 'Cancel',
+              style: 'cancel',
+            },
+            {
+              text: 'Go to Login',
+              onPress: () => router.push('/login' as any),
+            },
+          ]
+        );
+        return;
       } else if (error.message) {
         errorMessage = error.message;
       }
