@@ -12,8 +12,6 @@ export interface SupabaseUser {
   blocked: boolean;
   createdAt: Date | null;
   lastActive: Date | null;
-  accountTier: 'free' | 'pro' | 'agency';
-  hasAgentProfile: boolean;
 }
 
 export interface SignupParams {
@@ -55,18 +53,8 @@ export async function signup(params: SignupParams): Promise<{ user: SupabaseUser
 
   const { data: profile, error: profileError } = await supabase
     .from('users')
-    .insert({
-      id: authData.user.id,
-      email,
-      name,
-      phone: phone || null,
-      role: 'client',
-      verified: false,
-      blocked: false,
-      account_tier: 'free',
-      has_agent_profile: false,
-    })
     .select()
+    .eq('id', authData.user.id)
     .single();
 
   if (profileError) {
@@ -85,8 +73,6 @@ export async function signup(params: SignupParams): Promise<{ user: SupabaseUser
     blocked: profile.blocked,
     createdAt: profile.created_at ? new Date(profile.created_at) : null,
     lastActive: profile.last_active ? new Date(profile.last_active) : null,
-    accountTier: profile.account_tier,
-    hasAgentProfile: profile.has_agent_profile,
   };
 
   await AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(user));
@@ -143,8 +129,6 @@ export async function login(params: LoginParams): Promise<{ user: SupabaseUser }
     blocked: profile.blocked,
     createdAt: profile.created_at ? new Date(profile.created_at) : null,
     lastActive: new Date(),
-    accountTier: profile.account_tier,
-    hasAgentProfile: profile.has_agent_profile,
   };
 
   await AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(user));
@@ -200,8 +184,6 @@ export async function getCurrentUser(skipCache: boolean = false): Promise<Supaba
     blocked: profile.blocked,
     createdAt: profile.created_at ? new Date(profile.created_at) : null,
     lastActive: profile.last_active ? new Date(profile.last_active) : null,
-    accountTier: profile.account_tier,
-    hasAgentProfile: profile.has_agent_profile,
   };
 
   await AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(user));
@@ -239,8 +221,6 @@ export async function updateProfile(updates: { name?: string; phone?: string }):
     blocked: profile.blocked,
     createdAt: profile.created_at ? new Date(profile.created_at) : null,
     lastActive: profile.last_active ? new Date(profile.last_active) : null,
-    accountTier: profile.account_tier,
-    hasAgentProfile: profile.has_agent_profile,
   };
 
   await AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(user));

@@ -18,7 +18,8 @@ export const [UserProvider, useUser] = createContextHook(() => {
       const currentUser = await getCurrentUser(skipCache);
       setUser(currentUser);
     } catch (error) {
-      console.error('Failed to load user:', error);
+      console.error('Error fetching user profile:', error);
+      console.error('Failed to fetch user profile:', error instanceof Error ? error.message : String(error));
       setUser(null);
     } finally {
       setIsLoading(false);
