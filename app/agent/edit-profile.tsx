@@ -129,7 +129,11 @@ export default function EditProfileScreen() {
       
       setShowSuccess(true);
       setTimeout(() => {
-        router.back();
+        if (router.canGoBack()) {
+          router.back();
+        } else {
+          router.replace('/agent/dashboard' as any);
+        }
       }, 1500);
     } catch (error: any) {
       console.error('Failed to update profile:', error);
@@ -188,7 +192,13 @@ export default function EditProfileScreen() {
   return (
     <View style={[styles.container, { paddingTop: Platform.OS === 'web' ? 0 : insets.top }]}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backButton} onPress={() => {
+          if (router.canGoBack()) {
+            router.back();
+          } else {
+            router.replace('/agent/dashboard' as any);
+          }
+        }}>
           <ArrowLeft size={24} color={Colors.text.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Edit Profile</Text>

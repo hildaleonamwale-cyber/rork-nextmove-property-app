@@ -173,7 +173,11 @@ export default function AgentDashboardScreen() {
           style={styles.backButton}
           onPress={() => {
             switchMode('client');
-            router.back();
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/(tabs)/home' as any);
+            }
           }}
         >
           <ArrowLeft size={24} color={Colors.text.primary} />

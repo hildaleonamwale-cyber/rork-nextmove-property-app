@@ -165,7 +165,11 @@ export default function AddPropertyScreen() {
       console.log('Property created successfully:', data);
       setShowSuccess(true);
       setTimeout(() => {
-        router.back();
+        if (router.canGoBack()) {
+          router.back();
+        } else {
+          router.replace('/agent/dashboard' as any);
+        }
       }, 1500);
     } catch (error: any) {
       console.error('Failed to create property:', error);
@@ -182,7 +186,13 @@ export default function AddPropertyScreen() {
   return (
     <View style={[styles.container, { paddingTop: Platform.OS === 'web' ? 0 : insets.top }]}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.closeButton} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.closeButton} onPress={() => {
+          if (router.canGoBack()) {
+            router.back();
+          } else {
+            router.replace('/agent/dashboard' as any);
+          }
+        }}>
           <X size={24} color={Colors.text.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Add Property</Text>
