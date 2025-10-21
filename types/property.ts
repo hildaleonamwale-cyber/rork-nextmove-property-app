@@ -280,6 +280,8 @@ export interface BookingSlot {
   notes?: string;
   booked?: boolean;
   bookedBy?: string;
+  bookedByName?: string;
+  bookingId?: string;
   clientId?: string;
 }
 
