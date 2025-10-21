@@ -29,15 +29,14 @@ import {
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
-import { trpc } from '@/lib/trpc';
+import { useAgent } from '@/contexts/AgentContext';
+import { useSupabaseStaff } from '@/hooks/useSupabaseAgent';
 
 export default function StaffScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const staffQuery = trpc.staff.list.useQuery();
-  const addStaffMutation = trpc.staff.add.useMutation();
-  const updateStaffMutation = trpc.staff.update.useMutation();
-  const removeStaffMutation = trpc.staff.remove.useMutation();
+  const { profile: agentProfile } = useAgent();
+  const { staff: staffData, isLoading: staffLoading, addStaff, updateStaff, removeStaff } = useSupabaseStaff(agentProfile?.id);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingMember, setEditingMember] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -74,16 +73,16 @@ export default function StaffScreen() {
     const inviteExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
     try {
-      await addStaffMutation.mutateAsync({
+      await addStaff({
         name: formData.name,
         role: formData.role || 'Agent',
         email: formData.email,
         phone: formData.phone,
         permissions: formData.permissions,
+        active: false,
         inviteToken,
         inviteExpiry,
       });
-      await staffQuery.refetch();
       const link = `https://app.example.com/invite?token=${inviteToken}`;
       setInviteLink(link);
       setShowInviteModal(true);
@@ -98,15 +97,13 @@ export default function StaffScreen() {
     if (!editingMember) return;
 
     try {
-      await updateStaffMutation.mutateAsync({
-        staffId: editingMember,
+      await updateStaff(editingMember, {
         name: formData.name || undefined,
         role: formData.role || undefined,
         email: formData.email || undefined,
         phone: formData.phone || undefined,
         permissions: formData.permissions.length > 0 ? formData.permissions : undefined,
       });
-      await staffQuery.refetch();
       resetForm();
     } catch (error) {
       console.error('Failed to update staff member:', error);
@@ -116,8 +113,7 @@ export default function StaffScreen() {
 
   const handleDeleteMember = async (id: string) => {
     try {
-      await removeStaffMutation.mutateAsync({ staffId: id });
-      await staffQuery.refetch();
+      await removeStaff(id);
     } catch (error) {
       console.error('Failed to remove staff member:', error);
       Alert.alert('Error', 'Failed to remove staff member. Please try again.');
@@ -207,22 +203,22 @@ export default function StaffScreen() {
 
         <View style={styles.statsRow}>
           <View style={styles.statBox}>
-            <Text style={styles.statValue}>{staffQuery.data?.length || 0}</Text>
+            <Text style={styles.statValue}>{staffData?.length || 0}</Text>
             <Text style={styles.statLabel}>Team Members</Text>
           </View>
           <View style={styles.statBox}>
             <Text style={styles.statValue}>
-              {staffQuery.data?.filter((m: any) => m.active).length || 0}
+              {staffData?.filter((m: any) => m.active).length || 0}
             </Text>
             <Text style={styles.statLabel}>Active</Text>
           </View>
         </View>
 
-        {staffQuery.isLoading ? (
+        {staffLoading ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyTitle}>Loading...</Text>
           </View>
-        ) : staffQuery.data?.length === 0 ? (
+        ) : staffData?.length === 0 ? (
           <View style={styles.emptyState}>
             <Users size={64} color={Colors.text.light} />
             <Text style={styles.emptyTitle}>No Team Members</Text>
@@ -239,7 +235,7 @@ export default function StaffScreen() {
           </View>
         ) : (
           <View style={styles.membersList}>
-            {staffQuery.data?.map((member: any) => (
+            {staffData?.map((member: any) => (
               <View key={member.id} style={styles.memberCard}>
                 <View style={styles.memberLeft}>
                   <View style={styles.avatarContainer}>
