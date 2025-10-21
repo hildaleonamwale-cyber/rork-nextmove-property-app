@@ -27,7 +27,7 @@ export default function WishlistScreen() {
   const { wishlist, removeFromWishlist } = useSupabaseWishlist(user?.id || '');
   const [followedAgencies, setFollowedAgencies] = useState<Set<string>>(new Set([mockAgencies[0]?.id].filter(Boolean)));
 
-  const favoriteProperties = wishlist.length > 0 ? wishlist : mockProperties.slice(0, 5);
+  const favoriteProperties = wishlist;
   
   const followedAgenciesList = mockAgencies.filter(a => followedAgencies.has(a.id));
 

@@ -80,14 +80,14 @@ export default function NotificationsScreen() {
     }
   };
 
-  const notifications = notificationsData.length > 0 ? notificationsData.map(n => ({
+  const notifications = notificationsData.map(n => ({
     id: n.id,
     type: n.type as 'message' | 'booking' | 'like' | 'property',
     title: n.title,
     description: n.message,
     timestamp: new Date(n.createdAt).toLocaleDateString(),
     read: n.read,
-  })) : mockNotifications;
+  }));
 
   const handleClearAll = async () => {
     for (const notification of notifications) {

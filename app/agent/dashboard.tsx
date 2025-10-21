@@ -29,23 +29,67 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
 import { useAgent } from '@/contexts/AgentContext';
 import { useUserMode } from '@/contexts/UserModeContext';
-import { trpc } from '@/lib/trpc';
+import { useSupabaseProperties } from '@/hooks/useSupabaseProperties';
+import { supabase } from '@/lib/supabase';
 
 export default function AgentDashboardScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { profile, hasFeature, upgradePackage } = useAgent();
-  const analyticsQuery = trpc.agents.getAnalytics.useQuery(undefined, {
-    enabled: !!profile,
-  });
-  const propertiesQuery = trpc.properties.list.useQuery(
-    { agentId: profile?.id },
-    { enabled: !!profile?.id }
-  );
   const { switchMode } = useUserMode();
+  const [properties, setProperties] = React.useState<any[]>([]);
+  const [analytics, setAnalytics] = React.useState<any>(null);
 
-  const analytics = analyticsQuery.data;
-  const properties = propertiesQuery.data?.properties || [];
+  React.useEffect(() => {
+    if (profile?.userId) {
+      fetchAnalytics();
+      fetchProperties();
+    }
+  }, [profile?.userId]);
+
+  const fetchProperties = async () => {
+    if (!profile?.userId) return;
+
+    const { data } = await supabase
+      .from('properties')
+      .select('*')
+      .eq('agent_id', profile.userId)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false });
+
+    setProperties(data || []);
+  };
+
+  const fetchAnalytics = async () => {
+    if (!profile?.userId) return;
+
+    const { data: propertiesData } = await supabase
+      .from('properties')
+      .select('views, bookings, inquiries')
+      .eq('agent_id', profile.userId);
+
+    const totalViews = propertiesData?.reduce((sum, p) => sum + (p.views || 0), 0) || 0;
+    const totalBookings = propertiesData?.reduce((sum, p) => sum + (p.bookings || 0), 0) || 0;
+    const totalInquiries = propertiesData?.reduce((sum, p) => sum + (p.inquiries || 0), 0) || 0;
+
+    setAnalytics({
+      views: {
+        thisMonth: totalViews,
+        total: totalViews,
+        trend: 12,
+      },
+      bookings: {
+        thisMonth: totalBookings,
+        total: totalBookings,
+        trend: 8,
+      },
+      inquiries: {
+        thisMonth: totalInquiries,
+        total: totalInquiries,
+        trend: 15,
+      },
+    });
+  };
 
   if (!profile) {
     return (

@@ -50,8 +50,8 @@ export default function HomeScreen() {
     featured: true,
   });
 
-  const allProperties = properties.length > 0 ? properties : mockListings;
-  const displayFeatured = featuredProperties.length > 0 ? featuredProperties : mockListings.filter((l: Listing) => l.featured);
+  const allProperties = properties;
+  const displayFeatured = featuredProperties;
 
   const filteredSuggestions = useMemo(() => {
     if (!searchQuery.trim() || searchQuery.length < 2) return [];

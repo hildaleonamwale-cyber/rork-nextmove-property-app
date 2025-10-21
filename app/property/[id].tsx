@@ -68,8 +68,7 @@ export default function PropertyDetailScreen() {
 
   const { property: propertyData, isLoading } = useSupabaseProperty(id as string);
 
-  const allListings: Listing[] = [...mockProperties, ...mockStands, ...mockCommercialProperties];
-  const listing = propertyData || allListings.find((p) => p.id === id);
+  const listing = propertyData;
   const agent = mockAgents.find((a) => a.id === listing?.agentId);
   const agency = mockAgencies.find((ag) => ag.id === agent?.agencyId);
   

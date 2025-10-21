@@ -58,7 +58,7 @@ export default function MessagesScreen() {
     },
   ];
 
-  const chats = conversationsData.length > 0 ? conversationsData.map(conv => ({
+  const chats = conversationsData.map(conv => ({
     id: conv.id,
     name: conv.participantNames[0] || 'User',
     lastMessage: conv.lastMessage || '',
@@ -67,7 +67,7 @@ export default function MessagesScreen() {
       : '',
     unread: conv.unreadCount || 0,
     online: false,
-  })) : mockChats;
+  }));
 
   const filteredChats = chats.filter(chat =>
     chat.name.toLowerCase().includes(searchQuery.toLowerCase())
