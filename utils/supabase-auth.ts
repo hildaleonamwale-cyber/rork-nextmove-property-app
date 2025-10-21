@@ -29,22 +29,34 @@ export interface LoginParams {
 const USER_PROFILE_KEY = '@user_profile';
 
 async function ensureSession() {
-  let { data: { session }, error } = await supabase.auth.getSession();
+  const { data: { session }, error } = await supabase.auth.getSession();
   
   if (error) {
     console.error('Error getting session:', error);
+    throw new Error('Session error: ' + error.message);
   }
   
   if (!session) {
-    console.log('No active session, attempting to refresh...');
+    console.error('No active session found');
+    throw new Error('No active session. Please log in again.');
+  }
+  
+  const now = Math.floor(Date.now() / 1000);
+  const expiresAt = session.expires_at || 0;
+  const timeUntilExpiry = expiresAt - now;
+  
+  if (timeUntilExpiry < 300) {
+    console.log('Session expiring soon, refreshing...');
     const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
     
-    if (refreshError) {
-      console.error('Failed to refresh session:', refreshError);
-      return null;
+    if (refreshError || !refreshedSession) {
+      console.error('Session refresh failed:', refreshError);
+      await supabase.auth.signOut();
+      await AsyncStorage.removeItem(USER_PROFILE_KEY);
+      throw new Error('Session expired. Please log in again.');
     }
     
-    session = refreshedSession;
+    return refreshedSession;
   }
   
   return session;

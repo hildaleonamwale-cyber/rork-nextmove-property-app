@@ -14,14 +14,15 @@ export const [UserProvider, useUser] = createContextHook(() => {
     loadUser();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event);
+      console.log('Auth state changed:', event, session ? 'Session exists' : 'No session');
       
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        console.log('Session active, loading user...');
+        console.log('Session active/refreshed, loading user...');
         await loadUser(true);
       } else if (event === 'SIGNED_OUT') {
         console.log('User signed out');
         setUser(null);
+        setError(null);
       }
     });
 
