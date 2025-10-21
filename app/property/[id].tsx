@@ -48,6 +48,7 @@ import ConfirmDialog from '@/components/ConfirmDialog';
 import SuccessPrompt from '@/components/SuccessPrompt';
 import { useBookings } from '@/contexts/BookingContext';
 import { useSupabaseProperty } from '@/hooks/useSupabaseProperties';
+import { supabase } from '@/lib/supabase';
 
 const { width } = Dimensions.get('window');
 
@@ -68,10 +69,43 @@ export default function PropertyDetailScreen() {
 
   const propertyId = typeof id === 'string' ? id : Array.isArray(id) ? id[0] : '';
   const { property: propertyData, isLoading } = useSupabaseProperty(propertyId);
+  const [agent, setAgent] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    const fetchAgent = async () => {
+      if (!propertyData?.agentId) return;
+      
+      const { data: userData } = await supabase
+        .from('users')
+        .select('id, name, email, phone, avatar')
+        .eq('id', propertyData.agentId)
+        .single();
+
+      const { data: agentData } = await supabase
+        .from('agents')
+        .select('*')
+        .eq('user_id', propertyData.agentId)
+        .single();
+
+      if (userData) {
+        setAgent({
+          id: userData.id,
+          name: userData.name,
+          email: userData.email,
+          phone: userData.phone,
+          avatar: userData.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(userData.name),
+          title: agentData?.company_name || 'Real Estate Agent',
+          companyName: agentData?.company_name,
+          bio: agentData?.bio,
+        });
+      }
+    };
+
+    fetchAgent();
+  }, [propertyData?.agentId]);
 
   const listing = propertyData;
-  const agent = mockAgents.find((a) => a.id === listing?.agentId);
-  const agency = mockAgencies.find((ag) => ag.id === agent?.agencyId);
+  const agency = null;
   
   const isStand = listing?.listingCategory === 'stand';
   const isCommercial = listing?.listingCategory === 'commercial';
@@ -535,11 +569,10 @@ export default function PropertyDetailScreen() {
                       <Text style={styles.agentTitle} numberOfLines={1}>
                         {agent.title}
                       </Text>
-                      {agency && (
+                      {agent.companyName && (
                         <View style={styles.companyInfo}>
-                          <Image source={{ uri: agency.logo }} style={styles.companyLogo} />
                           <Text style={styles.companyName} numberOfLines={1}>
-                            {agency.name}
+                            {agent.companyName}
                           </Text>
                         </View>
                       )}

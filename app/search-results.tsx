@@ -17,7 +17,7 @@ import StandCard from '@/components/StandCard';
 import CommercialPropertyCard from '@/components/CommercialPropertyCard';
 import RoomCard from '@/components/RoomCard';
 import { Listing, ListingCategory } from '@/types/property';
-import { trpc } from '@/lib/trpc';
+import { useSupabaseProperties } from '@/hooks/useSupabaseProperties';
 
 export default function SearchResultsScreen() {
   const router = useRouter();
@@ -62,11 +62,11 @@ export default function SearchResultsScreen() {
     return query;
   }, [params]);
 
-  const { data: searchData, isLoading } = trpc.properties.list.useQuery(searchParams);
+  const { properties: searchData, isLoading } = useSupabaseProperties(searchParams);
 
   const filters = ['All', 'For Rent', 'For Sale', 'Properties', 'Stands', 'Rooms', 'Commercial'];
 
-  const allProperties = searchData?.properties || [];
+  const allProperties = searchData || [];
 
   const filteredProperties = useMemo(() => {
     return allProperties.filter((listing: any) => {

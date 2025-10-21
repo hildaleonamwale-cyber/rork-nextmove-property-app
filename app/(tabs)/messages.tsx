@@ -31,33 +31,6 @@ export default function MessagesScreen() {
 
   const { conversations: conversationsData, isLoading: isLoadingConversations } = useSupabaseConversations(user?.id || '');
 
-  const mockChats: ChatPreview[] = [
-    {
-      id: '1',
-      name: 'Property Agent',
-      lastMessage: 'The property includes 2 underground parking spaces...',
-      timestamp: '2:30 PM',
-      unread: 2,
-      online: true,
-    },
-    {
-      id: '2',
-      name: 'Downtown Realty',
-      lastMessage: 'We have similar properties in that area',
-      timestamp: 'Yesterday',
-      unread: 0,
-      online: false,
-    },
-    {
-      id: '3',
-      name: 'Elite Homes',
-      lastMessage: 'Thank you for your interest!',
-      timestamp: 'Monday',
-      unread: 0,
-      online: true,
-    },
-  ];
-
   const chats = conversationsData.map(conv => ({
     id: conv.id,
     name: conv.participantNames[0] || 'User',

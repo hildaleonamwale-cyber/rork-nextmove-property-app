@@ -45,8 +45,7 @@ export default function AgentDashboardScreen() {
     const { data } = await supabase
       .from('properties')
       .select('*')
-      .eq('agent_id', profile.userId)
-      .eq('status', 'active')
+      .eq('user_id', profile.userId)
       .order('created_at', { ascending: false });
 
     setProperties(data || []);
@@ -57,11 +56,10 @@ export default function AgentDashboardScreen() {
 
     const { data: propertiesData } = await supabase
       .from('properties')
-      .select('views, bookings, inquiries')
-      .eq('agent_id', profile.userId);
+      .select('views, inquiries')
+      .eq('user_id', profile.userId);
 
     const totalViews = propertiesData?.reduce((sum, p) => sum + (p.views || 0), 0) || 0;
-    const totalBookings = propertiesData?.reduce((sum, p) => sum + (p.bookings || 0), 0) || 0;
     const totalInquiries = propertiesData?.reduce((sum, p) => sum + (p.inquiries || 0), 0) || 0;
 
     setAnalytics({
@@ -71,9 +69,9 @@ export default function AgentDashboardScreen() {
         trend: 12,
       },
       bookings: {
-        thisMonth: totalBookings,
-        total: totalBookings,
-        trend: 8,
+        thisMonth: 0,
+        total: 0,
+        trend: 0,
       },
       inquiries: {
         thisMonth: totalInquiries,
@@ -96,7 +94,7 @@ export default function AgentDashboardScreen() {
             event: '*',
             schema: 'public',
             table: 'properties',
-            filter: `agent_id=eq.${profile.userId}`,
+            filter: `user_id=eq.${profile.userId}`,
           },
           () => {
             console.log('Agent properties changed, refetching...');

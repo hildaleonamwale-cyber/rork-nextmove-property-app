@@ -4,12 +4,16 @@ import { Listing } from '@/types/property';
 
 interface PropertyFilters {
   city?: string;
+  location?: string;
   propertyType?: string;
   listingCategory?: string;
   minPrice?: number;
   maxPrice?: number;
   minBeds?: number;
   maxBeds?: number;
+  bedrooms?: number;
+  bathrooms?: number;
+  status?: string[];
   featured?: boolean;
   limit?: number;
   offset?: number;
@@ -62,6 +66,10 @@ export function useSupabaseProperties(filters?: PropertyFilters) {
         query = query.eq('city', filters.city);
       }
 
+      if (filters?.location) {
+        query = query.or(`city.ilike.%${filters.location}%,state.ilike.%${filters.location}%,address.ilike.%${filters.location}%`);
+      }
+
       if (filters?.propertyType) {
         query = query.eq('property_type', filters.propertyType);
       }
@@ -78,7 +86,17 @@ export function useSupabaseProperties(filters?: PropertyFilters) {
         query = query.lte('price', filters.maxPrice);
       }
 
-      // Beds filter removed - property structure varies by type
+      if (filters?.bedrooms !== undefined) {
+        query = query.gte('bedrooms', filters.bedrooms);
+      }
+
+      if (filters?.bathrooms !== undefined) {
+        query = query.gte('bathrooms', filters.bathrooms);
+      }
+
+      if (filters?.status && filters.status.length > 0) {
+        query = query.in('status', filters.status);
+      }
 
       if (filters?.featured !== undefined) {
         query = query.eq('featured', filters.featured);

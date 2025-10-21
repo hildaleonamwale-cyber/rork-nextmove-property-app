@@ -101,10 +101,10 @@ export default function AccountScreen() {
             style={[styles.modeButton, isAgent && styles.modeButtonActive]}
             onPress={() => {
               switchMode('agent');
-              if (!profile.accountSetupComplete) {
-                setTimeout(() => router.push('/agent/onboarding' as any), 100);
-              } else {
+              if (profile?.id) {
                 setTimeout(() => router.push('/agent/dashboard' as any), 100);
+              } else {
+                setTimeout(() => router.push('/agent/onboarding' as any), 100);
               }
             }}
           >
