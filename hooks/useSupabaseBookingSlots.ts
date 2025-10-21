@@ -43,7 +43,7 @@ export function useSupabaseBookingSlots(agentId?: string) {
 
       const { data, error: fetchError } = await supabase
         .from('booking_slots')
-        .select('*, users(name)')
+        .select('*')
         .eq('agent_id', agentId)
         .order('date', { ascending: true })
         .order('start_time', { ascending: true });
@@ -134,7 +134,6 @@ function transformBookingSlot(data: any): BookingSlot {
     endTime: data.end_time,
     booked: data.booked,
     bookedBy: data.booked_by,
-    bookedByName: data.users?.name,
     bookingId: data.booking_id,
     notes: data.notes,
   };
