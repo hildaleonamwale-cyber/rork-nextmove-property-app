@@ -33,8 +33,7 @@ export function useSupabaseProperties(filters?: PropertyFilters) {
 
       let query = supabase
         .from('properties')
-        .select('*, agent_profiles(name, company_name)', { count: 'exact' })
-        .eq('status', 'active');
+        .select('*, agents!agent_id(user_id, company_name)', { count: 'exact' });
 
       if (filters?.city) {
         query = query.eq('city', filters.city);
@@ -121,7 +120,7 @@ export function useSupabaseProperty(id: string) {
 
       const { data, error: fetchError } = await supabase
         .from('properties')
-        .select('*, agent_profiles(name, company_name, phone, email, avatar)')
+        .select('*, agents!agent_id(user_id, company_name), users!user_id(name, phone, email, avatar)')
         .eq('id', id)
         .single();
 
