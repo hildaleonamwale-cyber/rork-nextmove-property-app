@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
 import { useAgentProfile } from '@/contexts/AgentProfileContext';
 import { useUser } from '@/contexts/UserContext';
+import SuccessPrompt from '@/components/SuccessPrompt';
 
 export default function AgentOnboardingScreen() {
   const router = useRouter();
@@ -34,6 +35,7 @@ export default function AgentOnboardingScreen() {
   });
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [bannerImage, setBannerImage] = useState<string | null>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const availableSpecialties = [
     'Residential',
@@ -71,8 +73,10 @@ export default function AgentOnboardingScreen() {
       await refetchUser();
       console.log('User refetched');
       
-      Alert.alert('Success', 'Agent profile created successfully!');
-      router.replace('/agent/dashboard' as any);
+      setShowSuccess(true);
+      setTimeout(() => {
+        router.replace('/agent/dashboard' as any);
+      }, 2500);
     } catch (error) {
       console.error('Failed to complete onboarding:', error);
       Alert.alert('Error', error instanceof Error ? error.message : 'Failed to complete setup. Please try again.');
@@ -333,6 +337,13 @@ export default function AgentOnboardingScreen() {
           </Text>
         </TouchableOpacity>
       </View>
+
+      <SuccessPrompt
+        visible={showSuccess}
+        message="Agent account created successfully!"
+        onClose={() => setShowSuccess(false)}
+        autoClose={false}
+      />
     </View>
   );
 }

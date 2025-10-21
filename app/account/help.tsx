@@ -44,7 +44,7 @@ export default function HelpCenterScreen() {
               </View>
               <View style={styles.contactInfo}>
                 <Text style={styles.contactLabel}>Email Support</Text>
-                <Text style={styles.contactDescription}>support@realestate.com</Text>
+                <Text style={styles.contactDescription}>support@nextmove.co.zw</Text>
               </View>
               <ChevronRight size={20} color={Colors.text.light} />
             </TouchableOpacity>
@@ -57,7 +57,7 @@ export default function HelpCenterScreen() {
               </View>
               <View style={styles.contactInfo}>
                 <Text style={styles.contactLabel}>Phone Support</Text>
-                <Text style={styles.contactDescription}>+1 (800) 123-4567</Text>
+                <Text style={styles.contactDescription}>+263 71 968 4006</Text>
               </View>
               <ChevronRight size={20} color={Colors.text.light} />
             </TouchableOpacity>

@@ -35,6 +35,18 @@ export function useSupabaseBanners() {
 
   useEffect(() => {
     fetchBanners();
+
+    const subscription = supabase
+      .channel('banners_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'banners' }, () => {
+        console.log('Banners changed, refetching...');
+        fetchBanners();
+      })
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const fetchBanners = async () => {
@@ -109,6 +121,18 @@ export function useSupabaseSections() {
 
   useEffect(() => {
     fetchSections();
+
+    const subscription = supabase
+      .channel('sections_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'homepage_sections' }, () => {
+        console.log('Sections changed, refetching...');
+        fetchSections();
+      })
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const fetchSections = async () => {
@@ -184,6 +208,18 @@ export function useSupabaseUsers() {
 
   useEffect(() => {
     fetchUsers();
+
+    const subscription = supabase
+      .channel('users_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => {
+        console.log('Users changed, refetching...');
+        fetchUsers();
+      })
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const fetchUsers = async () => {

@@ -1,6 +1,7 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useState, useEffect } from 'react';
 import createContextHook from '@nkzw/create-context-hook';
 import { useSupabaseBanners, useSupabaseSections, useSupabaseUsers, useSupabaseUserStats } from '@/hooks/useSupabaseAdmin';
+import { supabase } from '@/lib/supabase';
 
 export type UserRole = 'client' | 'agent' | 'agency' | 'admin';
 export type AccountTier = 'free' | 'pro' | 'agency';
@@ -82,6 +83,21 @@ const defaultSettings: SystemSettings = {
 };
 
 export const [SuperAdminProvider, useSuperAdmin] = createContextHook(() => {
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsSuperAdmin(session?.user?.email === 'support@nextmove.co.zw');
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setIsSuperAdmin(session?.user?.email === 'support@nextmove.co.zw');
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
   const { 
     banners: supabaseBanners = [], 
     isLoading: bannersLoading, 
@@ -303,7 +319,7 @@ export const [SuperAdminProvider, useSuperAdmin] = createContextHook(() => {
   }), [stats]);
 
   return useMemo(() => ({
-    isSuperAdmin: true,
+    isSuperAdmin,
     isLoading,
     error,
     enableSuperAdmin,
@@ -328,6 +344,7 @@ export const [SuperAdminProvider, useSuperAdmin] = createContextHook(() => {
     upgradeUserTier,
     analytics,
   }), [
+    isSuperAdmin,
     isLoading,
     error,
     enableSuperAdmin,

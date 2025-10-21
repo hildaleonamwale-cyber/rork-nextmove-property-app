@@ -27,6 +27,20 @@ export function useSupabaseProperties(filters?: PropertyFilters) {
     } else {
       setIsLoading(false);
     }
+
+    const subscription = supabase
+      .channel('properties_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'properties' }, () => {
+        console.log('Properties changed, refetching...');
+        if (filters !== undefined) {
+          fetchProperties();
+        }
+      })
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(filters)]);
 
@@ -113,6 +127,18 @@ export function useSupabaseProperty(id: string) {
     if (id) {
       fetchProperty();
     }
+
+    const subscription = supabase
+      .channel(`property_${id}_changes`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'properties', filter: `id=eq.${id}` }, () => {
+        console.log('Property changed, refetching...');
+        fetchProperty();
+      })
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
