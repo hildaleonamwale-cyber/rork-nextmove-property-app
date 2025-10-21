@@ -25,9 +25,9 @@ export function useSupabaseWishlist(userId: string) {
           property_id,
           properties(
             id, title, description, property_type, listing_category, status,
-            price, price_type, images, beds, baths, bedrooms, bathrooms, 
-            area, address, city, suburb, state, province, country, 
-            coordinates, latitude, longitude, featured, verified, views, bookings,
+            price, price_type, images, bedrooms, bathrooms, 
+            area, address, city, state, country, 
+            latitude, longitude, featured, views,
             inquiries, amenities, agent_id, user_id, created_at
           )
         `)
