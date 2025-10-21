@@ -76,8 +76,13 @@ export const [AgentProfileProvider, useAgentProfile] = createContextHook(() => {
   }, [agent, user, staff]);
 
   const updateProfile = useCallback(async (updates: Partial<ImportedAgentProfile>) => {
+    console.log('AgentProfileContext updateProfile called with:', updates);
+    console.log('Current agent:', agent);
+    console.log('Current user:', user);
+
     if (!agent) {
-      if (user?.role === 'client' || user?.role === 'admin') {
+      console.log('No agent profile exists, creating one...');
+      try {
         await createAgent({
           companyName: updates.companyName,
           bio: updates.bio,
@@ -91,10 +96,13 @@ export const [AgentProfileProvider, useAgentProfile] = createContextHook(() => {
           instagram: updates.socialMedia?.instagram,
           linkedin: updates.socialMedia?.linkedin,
         });
-      } else {
-        throw new Error('Cannot create agent profile');
+        console.log('Agent profile created successfully');
+      } catch (error) {
+        console.error('Failed to create agent profile:', error);
+        throw error;
       }
     } else {
+      console.log('Updating existing agent profile...');
       await updateAgent({
         companyName: updates.companyName,
         bio: updates.bio,
