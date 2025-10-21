@@ -56,7 +56,7 @@ export function useSupabaseBookings(userId?: string, agentId?: string) {
 
       let query = supabase
         .from('bookings')
-        .select('*, properties(title, images), users(name, email, phone), agent_profiles(name)')
+        .select('*, properties(title, images), users(name, email, phone), agents!agent_id(user_id, company_name)')
         .order('visit_date', { ascending: true });
 
       if (userId) {
@@ -146,7 +146,7 @@ function transformBooking(data: any): Booking {
     userEmail: data.users?.email || '',
     userPhone: data.users?.phone || '',
     agentId: data.agent_id,
-    agentName: data.agent_profiles?.name || 'Agent',
+    agentName: data.agents?.company_name || 'Agent',
     visitDate: new Date(data.visit_date),
     visitTime: data.visit_time,
     status: data.status,

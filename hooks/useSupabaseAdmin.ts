@@ -44,14 +44,20 @@ export function useSupabaseBanners() {
 
       const { data, error: fetchError } = await supabase
         .from('banners')
-        .select('*')
+        .select('id, title, image_url, link, order, enabled, created_at')
         .order('order', { ascending: true });
 
-      if (fetchError) throw new Error(fetchError.message);
+      if (fetchError) {
+        console.error('Banners fetch error:', fetchError);
+        setBanners([]);
+        setError(fetchError.message);
+        return;
+      }
 
       setBanners(data?.map(transformBanner) || []);
     } catch (err: any) {
       console.error('Failed to fetch banners:', err);
+      setBanners([]);
       setError(err.message);
     } finally {
       setIsLoading(false);
@@ -115,11 +121,17 @@ export function useSupabaseSections() {
         .select('*')
         .order('order', { ascending: true });
 
-      if (fetchError) throw new Error(fetchError.message);
+      if (fetchError) {
+        console.error('Sections fetch error:', fetchError);
+        setSections([]);
+        setError(fetchError.message);
+        return;
+      }
 
       setSections(data?.map(transformSection) || []);
     } catch (err: any) {
       console.error('Failed to fetch sections:', err);
+      setSections([]);
       setError(err.message);
     } finally {
       setIsLoading(false);
@@ -180,14 +192,20 @@ export function useSupabaseUsers() {
 
       const { data, error: fetchError } = await supabase
         .from('users')
-        .select('*')
+        .select('id, email, name, phone, avatar, role, verified, blocked, created_at, updated_at')
         .order('created_at', { ascending: false });
 
-      if (fetchError) throw new Error(fetchError.message);
+      if (fetchError) {
+        console.error('Users fetch error:', fetchError);
+        setUsers([]);
+        setError(fetchError.message);
+        return;
+      }
 
       setUsers(data || []);
     } catch (err: any) {
       console.error('Failed to fetch users:', err);
+      setUsers([]);
       setError(err.message);
     } finally {
       setIsLoading(false);
@@ -258,11 +276,11 @@ export function useSupabaseUserStats() {
 
       const { count: totalUsers } = await supabase
         .from('users')
-        .select('*', { count: 'exact', head: true });
+        .select('id', { count: 'exact', head: true });
 
       const { count: totalAgents } = await supabase
         .from('users')
-        .select('*', { count: 'exact', head: true })
+        .select('id', { count: 'exact', head: true })
         .in('role', ['agent', 'agency']);
 
       const thirtyDaysAgo = new Date();
@@ -270,7 +288,7 @@ export function useSupabaseUserStats() {
 
       const { count: newUsers } = await supabase
         .from('users')
-        .select('*', { count: 'exact', head: true })
+        .select('id', { count: 'exact', head: true })
         .gte('created_at', thirtyDaysAgo.toISOString());
 
       setStats({
@@ -281,6 +299,12 @@ export function useSupabaseUserStats() {
       });
     } catch (err: any) {
       console.error('Failed to fetch stats:', err);
+      setStats({
+        totalUsers: 0,
+        activeUsers: 0,
+        newUsers: 0,
+        totalAgents: 0,
+      });
       setError(err.message);
     } finally {
       setIsLoading(false);

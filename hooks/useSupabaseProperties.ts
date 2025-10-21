@@ -33,7 +33,12 @@ export function useSupabaseProperties(filters?: PropertyFilters) {
 
       let query = supabase
         .from('properties')
-        .select('*, agents!agent_id(user_id, company_name)', { count: 'exact' });
+        .select(`
+          id, title, description, property_type, listing_category, status,
+          price, listing_type, images, beds, baths, area, address, city, suburb,
+          province, country, coordinates, featured, verified, views, bookings,
+          inquiries, amenities, agent_id, user_id, created_at
+        `, { count: 'exact' });
 
       if (filters?.city) {
         query = query.eq('city', filters.city);
@@ -120,7 +125,12 @@ export function useSupabaseProperty(id: string) {
 
       const { data, error: fetchError } = await supabase
         .from('properties')
-        .select('*, agents!agent_id(user_id, company_name), users!user_id(name, phone, email, avatar)')
+        .select(`
+          id, title, description, property_type, listing_category, status,
+          price, listing_type, images, beds, baths, area, address, city, suburb,
+          province, country, coordinates, featured, verified, views, bookings,
+          inquiries, amenities, agent_id, user_id, created_at
+        `)
         .eq('id', id)
         .single();
 
