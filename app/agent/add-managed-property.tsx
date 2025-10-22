@@ -15,13 +15,15 @@ import { ArrowLeft, Save, Plus, X, ImageIcon } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
-import { trpc } from '@/lib/trpc';
+import { useSupabaseManagedProperties } from '@/hooks/useSupabaseManagedProperties';
+import { useAgent } from '@/contexts/AgentContext';
 import { ManagedPropertyStatus, ManagedPropertyType } from '@/types/property';
 
 export default function AddManagedPropertyScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const addMutation = trpc.managedProperties.add.useMutation();
+  const { profile } = useAgent();
+  const { addProperty } = useSupabaseManagedProperties(profile?.id);
 
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
@@ -82,8 +84,17 @@ export default function AddManagedPropertyScreen() {
       return;
     }
 
+    if (!profile?.id) {
+      if (Platform.OS === 'web') {
+        alert('No agent profile found');
+      } else {
+        Alert.alert('Error', 'No agent profile found');
+      }
+      return;
+    }
+
     try {
-      await addMutation.mutateAsync({
+      await addProperty({
         name: name.trim(),
         address: address.trim(),
         type,

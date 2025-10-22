@@ -22,17 +22,13 @@ import {
   EyeOff,
   ExternalLink,
 } from 'lucide-react-native';
-import { trpc } from '@/lib/trpc';
+import { useSupabaseBanners } from '@/hooks/useSupabaseAdmin';
 import Colors from '@/constants/colors';
 
 export default function BannerManagement() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { data: banners = [], isLoading } = trpc.admin.banners.list.useQuery();
-  const updateBannerMutation = trpc.admin.banners.update.useMutation();
-  const createBannerMutation = trpc.admin.banners.create.useMutation();
-  const deleteBannerMutation = trpc.admin.banners.delete.useMutation();
-  const utils = trpc.useUtils();
+  const { banners, isLoading, updateBanner, createBanner, deleteBanner } = useSupabaseBanners();
   
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [selectedBanner, setSelectedBanner] = useState<typeof banners[0] | null>(null);
@@ -47,7 +43,7 @@ export default function BannerManagement() {
     setFormData({
       imageUrl: banner.imageUrl,
       title: banner.title,
-      link: banner.link,
+      link: banner.link || '',
     });
     setEditModalVisible(true);
   };
@@ -70,19 +66,21 @@ export default function BannerManagement() {
 
     try {
       if (selectedBanner) {
-        await updateBannerMutation.mutateAsync({
-          id: selectedBanner.id,
-          ...formData,
+        await updateBanner(selectedBanner.id, {
+          title: formData.title,
+          imageUrl: formData.imageUrl,
+          link: formData.link,
         });
       } else {
-        await createBannerMutation.mutateAsync({
-          ...formData,
+        await createBanner({
+          title: formData.title,
+          imageUrl: formData.imageUrl,
+          link: formData.link,
           enabled: true,
           order: banners.length + 1,
         });
       }
 
-      await utils.admin.banners.list.invalidate();
       setEditModalVisible(false);
       setSelectedBanner(null);
     } catch (error) {
@@ -102,8 +100,7 @@ export default function BannerManagement() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await deleteBannerMutation.mutateAsync({ id: bannerId });
-              await utils.admin.banners.list.invalidate();
+              await deleteBanner(bannerId);
             } catch (error) {
               Alert.alert('Error', 'Failed to delete banner');
               console.error('Failed to delete banner:', error);
@@ -116,11 +113,9 @@ export default function BannerManagement() {
 
   const handleToggleEnabled = async (banner: typeof banners[0]) => {
     try {
-      await updateBannerMutation.mutateAsync({
-        id: banner.id,
+      await updateBanner(banner.id, {
         enabled: !banner.enabled,
       });
-      await utils.admin.banners.list.invalidate();
     } catch (error) {
       Alert.alert('Error', 'Failed to toggle banner');
       console.error('Failed to toggle banner:', error);

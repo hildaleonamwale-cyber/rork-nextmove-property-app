@@ -292,6 +292,168 @@ export function useSupabaseUsers() {
   return { users, isLoading, error, updateUserRole, blockUser, unblockUser, verifyUser, refetch: fetchUsers };
 }
 
+export function useSupabaseDashboardAnalytics() {
+  const [analytics, setAnalytics] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, []);
+
+  const fetchAnalytics = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const { count: totalUsers } = await supabase
+        .from('users')
+        .select('id', { count: 'exact', head: true });
+
+      const { count: totalAgents } = await supabase
+        .from('agents')
+        .select('id', { count: 'exact', head: true });
+
+      const { count: totalProperties } = await supabase
+        .from('properties')
+        .select('id', { count: 'exact', head: true });
+
+      const { count: activeListings } = await supabase
+        .from('properties')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'available');
+
+      const { count: totalBookings } = await supabase
+        .from('bookings')
+        .select('id', { count: 'exact', head: true });
+
+      const { count: flaggedContent } = await supabase
+        .from('properties')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'flagged');
+
+      const { count: clientUsers } = await supabase
+        .from('users')
+        .select('id', { count: 'exact', head: true })
+        .eq('role', 'client');
+
+      const { count: agentUsers } = await supabase
+        .from('users')
+        .select('id', { count: 'exact', head: true })
+        .eq('role', 'agent');
+
+      const { count: agencyUsers } = await supabase
+        .from('users')
+        .select('id', { count: 'exact', head: true })
+        .eq('role', 'agency');
+
+      const { count: apartments } = await supabase
+        .from('properties')
+        .select('id', { count: 'exact', head: true })
+        .eq('property_type', 'Apartment');
+
+      const { count: houses } = await supabase
+        .from('properties')
+        .select('id', { count: 'exact', head: true })
+        .eq('property_type', 'House');
+
+      const { count: villas } = await supabase
+        .from('properties')
+        .select('id', { count: 'exact', head: true })
+        .eq('property_type', 'Villa');
+
+      const { count: condos } = await supabase
+        .from('properties')
+        .select('id', { count: 'exact', head: true })
+        .eq('property_type', 'Condo');
+
+      const { count: commercial } = await supabase
+        .from('properties')
+        .select('id', { count: 'exact', head: true })
+        .eq('property_type', 'Commercial');
+
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const { count: newUsersThisMonth } = await supabase
+        .from('users')
+        .select('id', { count: 'exact', head: true })
+        .gte('created_at', thirtyDaysAgo.toISOString());
+
+      const sixtyDaysAgo = new Date();
+      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+      const { count: newUsersLastMonth } = await supabase
+        .from('users')
+        .select('id', { count: 'exact', head: true })
+        .gte('created_at', sixtyDaysAgo.toISOString())
+        .lt('created_at', thirtyDaysAgo.toISOString());
+
+      const { count: listingsThisMonth } = await supabase
+        .from('properties')
+        .select('id', { count: 'exact', head: true })
+        .gte('created_at', thirtyDaysAgo.toISOString());
+
+      const { count: listingsLastMonth } = await supabase
+        .from('properties')
+        .select('id', { count: 'exact', head: true })
+        .gte('created_at', sixtyDaysAgo.toISOString())
+        .lt('created_at', thirtyDaysAgo.toISOString());
+
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const { count: bookingsThisWeek } = await supabase
+        .from('bookings')
+        .select('id', { count: 'exact', head: true })
+        .gte('created_at', sevenDaysAgo.toISOString());
+
+      const fourteenDaysAgo = new Date();
+      fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+      const { count: bookingsLastWeek } = await supabase
+        .from('bookings')
+        .select('id', { count: 'exact', head: true })
+        .gte('created_at', fourteenDaysAgo.toISOString())
+        .lt('created_at', sevenDaysAgo.toISOString());
+
+      setAnalytics({
+        overview: {
+          totalUsers: totalUsers || 0,
+          activeListings: activeListings || 0,
+          totalProperties: totalProperties || 0,
+          totalBookings: totalBookings || 0,
+          flaggedContent: flaggedContent || 0,
+          totalAgents: totalAgents || 0,
+        },
+        usersByRole: {
+          clients: clientUsers || 0,
+          agents: agentUsers || 0,
+          agencies: agencyUsers || 0,
+        },
+        propertiesByType: {
+          apartment: apartments || 0,
+          house: houses || 0,
+          villa: villas || 0,
+          condo: condos || 0,
+          commercial: commercial || 0,
+        },
+        trends: {
+          newUsersThisMonth: newUsersThisMonth || 0,
+          newUsersLastMonth: newUsersLastMonth || 0,
+          listingsThisMonth: listingsThisMonth || 0,
+          listingsLastMonth: listingsLastMonth || 0,
+          bookingsThisWeek: bookingsThisWeek || 0,
+          bookingsLastWeek: bookingsLastWeek || 0,
+        },
+      });
+    } catch (err: any) {
+      console.error('Failed to fetch analytics:', err);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { analytics, isLoading, error, refetch: fetchAnalytics };
+}
+
 export function useSupabaseUserStats() {
   const [stats, setStats] = useState<UserStats>({
     totalUsers: 0,

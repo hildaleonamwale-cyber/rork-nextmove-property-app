@@ -19,21 +19,16 @@ import {
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
-import { trpc } from '@/lib/trpc';
+import { useSupabaseManagedProperties } from '@/hooks/useSupabaseManagedProperties';
+import { useAgent } from '@/contexts/AgentContext';
 import ManagedPropertyCard from '@/components/ManagedPropertyCard';
 import { ManagedPropertyStatus } from '@/types/property';
 
 export default function PropertyManagementScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const managedPropertiesQuery = trpc.managedProperties.list.useQuery();
-  const updateMutation = trpc.managedProperties.update.useMutation({
-    onSuccess: () => {
-      managedPropertiesQuery.refetch();
-    },
-  });
-
-  const managedProperties = useMemo(() => managedPropertiesQuery.data || [], [managedPropertiesQuery.data]);
+  const { profile } = useAgent();
+  const { properties: managedProperties, isLoading: managedPropertiesLoading, updateProperty } = useSupabaseManagedProperties(profile?.id);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<ManagedPropertyStatus | 'All'>('All');
   const [showStatusModal, setShowStatusModal] = useState(false);
@@ -74,12 +69,15 @@ export default function PropertyManagementScreen() {
 
   const updateStatus = async (newStatus: ManagedPropertyStatus) => {
     if (selectedPropertyId) {
-      await updateMutation.mutateAsync({
-        id: selectedPropertyId,
-        status: newStatus,
-      });
-      setShowStatusModal(false);
-      setSelectedPropertyId(null);
+      try {
+        await updateProperty(selectedPropertyId, {
+          status: newStatus,
+        });
+        setShowStatusModal(false);
+        setSelectedPropertyId(null);
+      } catch (error) {
+        console.error('Failed to update status:', error);
+      }
     }
   };
 
@@ -182,7 +180,7 @@ export default function PropertyManagementScreen() {
           </ScrollView>
         </View>
 
-        {managedPropertiesQuery.isLoading ? (
+        {managedPropertiesLoading ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyStateText}>Loading properties...</Text>
           </View>

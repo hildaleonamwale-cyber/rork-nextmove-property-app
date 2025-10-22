@@ -22,7 +22,7 @@ import {
   MapPin,
   Calendar,
 } from 'lucide-react-native';
-import { trpc } from '@/lib/trpc';
+import { useSupabaseProperties } from '@/hooks/useSupabaseProperties';
 import Colors from '@/constants/colors';
 
 export default function PropertyManagement() {
@@ -30,14 +30,7 @@ export default function PropertyManagement() {
   const insets = useSafeAreaInsets();
   
   const [searchQuery, setSearchQuery] = useState('');
-  const { data: propertiesData, isLoading } = trpc.properties.list.useQuery({
-    limit: 1000,
-    offset: 0,
-  });
-  const deletePropertyMutation = trpc.properties.delete.useMutation();
-  const utils = trpc.useUtils();
-
-  const properties = propertiesData?.properties || [];
+  const { properties, isLoading } = useSupabaseProperties({});
 
   const filteredProperties = useMemo(() => {
     return properties.filter((property: any) => {
@@ -58,22 +51,9 @@ export default function PropertyManagement() {
   const handleDelete = (propertyId: string, propertyTitle: string) => {
     Alert.alert(
       'Delete Property',
-      `Are you sure you want to delete "${propertyTitle}"?`,
+      `Delete property feature is not available in this view. Please contact support.`,
       [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deletePropertyMutation.mutateAsync({ id: propertyId });
-              await utils.properties.list.invalidate();
-            } catch (error) {
-              Alert.alert('Error', 'Failed to delete property');
-              console.error('Failed to delete property:', error);
-            }
-          },
-        },
+        { text: 'OK', style: 'cancel' },
       ]
     );
   };

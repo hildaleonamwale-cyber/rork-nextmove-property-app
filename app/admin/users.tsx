@@ -12,17 +12,13 @@ import {
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Shield, ShieldOff, Trash2, TrendingUp, Search, X } from 'lucide-react-native';
-import { trpc } from '@/lib/trpc';
+import { useSupabaseUsers } from '@/hooks/useSupabaseAdmin';
 import Colors from '@/constants/colors';
 
 export default function UserManagement() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { data: users = [], isLoading } = trpc.admin.listUsers.useQuery({});
-  const blockUserMutation = trpc.admin.blockUser.useMutation();
-  const unblockUserMutation = trpc.admin.unblockUser.useMutation();
-  const updateRoleMutation = trpc.admin.updateUserRole.useMutation();
-  const utils = trpc.useUtils();
+  const { users, isLoading, blockUser, unblockUser, updateUserRole } = useSupabaseUsers();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRole, setSelectedRole] = useState<'all' | string>('all');
   const [selectedTier, setSelectedTier] = useState<'all' | string>('all');
@@ -72,11 +68,10 @@ export default function UserManagement() {
           onPress: async () => {
             try {
               if (isBlocked) {
-                await unblockUserMutation.mutateAsync({ userId });
+                await unblockUser(userId);
               } else {
-                await blockUserMutation.mutateAsync({ userId });
+                await blockUser(userId);
               }
-              await utils.admin.listUsers.invalidate();
             } catch (error) {
               Alert.alert('Error', `Failed to ${isBlocked ? 'unblock' : 'block'} user`);
               console.error('Failed to block/unblock user:', error);
@@ -103,8 +98,7 @@ export default function UserManagement() {
       text: `${role} ${currentRole === role ? '(current)' : ''}`,
       onPress: async () => {
         try {
-          await updateRoleMutation.mutateAsync({ userId, role: role as any });
-          await utils.admin.listUsers.invalidate();
+          await updateUserRole(userId, role);
         } catch (error) {
           Alert.alert('Error', 'Failed to update user role');
           console.error('Failed to update user role:', error);

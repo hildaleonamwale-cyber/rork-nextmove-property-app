@@ -26,7 +26,7 @@ import {
 } from 'lucide-react-native';
 import { useSuperAdmin } from '@/contexts/SuperAdminContext';
 import Colors from '@/constants/colors';
-import { trpc } from '@/lib/trpc';
+import { useSupabaseDashboardAnalytics } from '@/hooks/useSupabaseAdmin';
 
 export default function SuperAdminDashboard() {
   const router = useRouter();
@@ -34,7 +34,7 @@ export default function SuperAdminDashboard() {
   const { isSuperAdmin } = useSuperAdmin();
   const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'year'>('month');
 
-  const { data: analytics, isLoading: analyticsLoading } = trpc.admin.getDashboardAnalytics.useQuery();
+  const { analytics, isLoading: analyticsLoading } = useSupabaseDashboardAnalytics();
 
   const mockAnalytics = useMemo(() => {
     if (!analytics) return null;

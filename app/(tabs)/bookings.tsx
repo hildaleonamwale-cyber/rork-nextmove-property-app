@@ -15,7 +15,8 @@ import SuccessPrompt from '@/components/SuccessPrompt';
 import UniformHeader from '@/components/UniformHeader';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import DateTimePickerModal from '@/components/DateTimePickerModal';
-import { trpc } from '@/lib/trpc';
+import { useSupabaseBookings } from '@/hooks/useSupabaseBookings';
+import { useUser } from '@/contexts/UserContext';
 
 interface Booking {
   id: string;
@@ -28,21 +29,9 @@ interface Booking {
 
 export default function BookingsScreen() {
   const [selectedTab, setSelectedTab] = useState<'upcoming' | 'past'>('upcoming');
-
   const [isRefreshing, setIsRefreshing] = useState(false);
-
-  const { data: bookingsData, refetch, isFetching } = trpc.bookings.list.useQuery(
-    {},
-    {
-      refetchInterval: 30000,
-      refetchIntervalInBackground: false,
-    }
-  );
-  const updateBookingMutation = trpc.bookings.updateStatus.useMutation({
-    onSuccess: () => {
-      refetch();
-    },
-  });
+  const { user } = useUser();
+  const { bookings: allBookings, isLoading: isFetching, updateBookingStatus, refetch } = useSupabaseBookings(user?.id);
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [showCancelDialog, setShowCancelDialog] = useState(false);
@@ -52,17 +41,17 @@ export default function BookingsScreen() {
   const [selectedPropertyName, setSelectedPropertyName] = useState('');
   const [rescheduleDate, setRescheduleDate] = useState(new Date());
 
-  const bookings = (bookingsData?.bookings || []).map(b => ({
+  const bookings = allBookings.map(b => ({
     id: b.id,
     propertyName: b.propertyTitle || 'Property',
     location: '',
-    date: new Date(b.date).toLocaleDateString('en-US', {
+    date: b.visitDate.toLocaleDateString('en-US', {
       weekday: 'long',
       month: 'short',
       day: 'numeric',
     }),
-    time: b.time,
-    status: b.status as 'upcoming' | 'completed' | 'cancelled',
+    time: b.visitTime,
+    status: (b.status === 'pending' || b.status === 'confirmed' ? 'upcoming' : b.status) as 'upcoming' | 'completed' | 'cancelled',
   }));
 
   const filteredBookings = bookings.filter(booking =>
@@ -107,17 +96,18 @@ export default function BookingsScreen() {
     setShowCancelDialog(true);
   }, []);
 
-  const handleCancelConfirm = useCallback(() => {
+  const handleCancelConfirm = useCallback(async () => {
     if (selectedBookingId) {
-      updateBookingMutation.mutate({
-        bookingId: selectedBookingId,
-        status: 'cancelled',
-      });
+      try {
+        await updateBookingStatus(selectedBookingId, 'cancelled');
+        setShowCancelDialog(false);
+        setSuccessMessage(`Successfully Cancelled ${selectedPropertyName}`);
+        setShowSuccess(true);
+      } catch (error) {
+        console.error('Failed to cancel booking:', error);
+      }
     }
-    setShowCancelDialog(false);
-    setSuccessMessage(`Successfully Cancelled ${selectedPropertyName}`);
-    setShowSuccess(true);
-  }, [selectedPropertyName, selectedBookingId, updateBookingMutation]);
+  }, [selectedPropertyName, selectedBookingId, updateBookingStatus]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
