@@ -39,12 +39,16 @@ export default function SearchResultsScreen() {
       query.status = [status];
     }
 
+    if (params.propertyType) {
+      query.propertyType = params.propertyType as string;
+    }
+
     if (params.priceMin) {
-      query.priceMin = Number(params.priceMin);
+      query.minPrice = Number(params.priceMin);
     }
 
     if (params.priceMax) {
-      query.priceMax = Number(params.priceMax);
+      query.maxPrice = Number(params.priceMax);
     }
 
     if (params.bedrooms) {
@@ -55,8 +59,14 @@ export default function SearchResultsScreen() {
       query.bathrooms = Number(params.bathrooms);
     }
 
-    if (params.city || params.province) {
-      query.location = params.city || params.province;
+    if (params.city) {
+      query.city = params.city as string;
+    } else if (params.province) {
+      query.location = params.province as string;
+    }
+
+    if (params.query) {
+      query.location = params.query as string;
     }
 
     return query;

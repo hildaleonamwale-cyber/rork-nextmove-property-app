@@ -71,7 +71,7 @@ export default function MessagesScreen() {
             <TouchableOpacity
               key={chat.id}
               style={styles.chatItem}
-              onPress={() => router.push('/chat')}
+              onPress={() => router.push(`/chat?conversationId=${chat.id}`)}
             >
               <View style={styles.avatarContainer}>
                 <View style={styles.avatar}>

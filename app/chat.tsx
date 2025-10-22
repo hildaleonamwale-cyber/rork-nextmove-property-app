@@ -40,50 +40,7 @@ export default function ChatScreen() {
   const [successMessage, setSuccessMessage] = useState('');
 
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      text: 'Hello! I\'m interested in the luxury penthouse. Is it still available?',
-      sender: 'user',
-      timestamp: new Date(Date.now() - 3600000),
-      type: 'text',
-    },
-    {
-      id: '2',
-      text: 'Hi! Yes, the property is still available. Would you like to schedule a viewing?',
-      sender: 'agent',
-      timestamp: new Date(Date.now() - 3500000),
-      type: 'text',
-    },
-    {
-      id: '3',
-      text: 'That would be great! What times are available this week?',
-      sender: 'user',
-      timestamp: new Date(Date.now() - 3400000),
-      type: 'text',
-    },
-    {
-      id: '4',
-      text: 'We have slots available on Tuesday at 2 PM, Wednesday at 10 AM, or Friday at 4 PM. Which works best for you?',
-      sender: 'agent',
-      timestamp: new Date(Date.now() - 3300000),
-      type: 'text',
-    },
-    {
-      id: '5',
-      text: 'Tuesday at 2 PM would be perfect. Can I also get more details about the parking facilities?',
-      sender: 'user',
-      timestamp: new Date(Date.now() - 3200000),
-      type: 'text',
-    },
-    {
-      id: '6',
-      text: 'Perfect! I\'ve scheduled your viewing for Tuesday at 2 PM. The property includes 2 underground parking spaces with 24/7 security. You\'ll receive a confirmation email shortly.',
-      sender: 'agent',
-      timestamp: new Date(Date.now() - 3100000),
-      type: 'text',
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
 
   useEffect(() => {
     if (bookings.length > 0) {

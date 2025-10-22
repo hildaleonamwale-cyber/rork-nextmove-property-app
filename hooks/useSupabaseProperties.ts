@@ -61,6 +61,7 @@ export function useSupabaseProperties(filters?: PropertyFilters) {
           id, title, description, property_type, listing_category, status,
           price, price_type, images, area, area_unit, furnished, parking,
           amenities, address, city, state, country, zip_code, latitude, longitude,
+          bedrooms, bathrooms,
           featured, views, inquiries, agent_id, user_id, created_at
         `, { count: 'exact' });
 
@@ -173,6 +174,7 @@ export function useSupabaseProperty(id: string) {
           id, title, description, property_type, listing_category, status,
           price, price_type, images, area, area_unit, furnished, parking,
           amenities, address, city, state, country, zip_code, latitude, longitude,
+          bedrooms, bathrooms,
           featured, views, inquiries, agent_id, user_id, created_at
         `)
         .eq('id', id)
@@ -266,8 +268,8 @@ function transformProperty(data: any): Listing {
 
   return {
     ...base,
-    bedrooms: 0,
-    bathrooms: 0,
+    bedrooms: data.bedrooms || 0,
+    bathrooms: data.bathrooms || 0,
     propertyType: data.property_type as any,
     amenities: amenities,
   } as any;

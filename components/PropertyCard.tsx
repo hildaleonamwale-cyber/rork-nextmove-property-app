@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import OptimizedImage, { blurhash } from './OptimizedImage';
-import { Bed, Bath, MapPin, Heart, User } from 'lucide-react-native';
+import { Bed, Bath, MapPin, Heart, User, Edit2 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { DesignSystem } from '@/constants/designSystem';
 import { Property } from '@/types/property';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
+import { useUser } from '@/contexts/UserContext';
 
 interface PropertyCardProps {
   property: Property;
@@ -19,8 +20,10 @@ const CARD_WIDTH = width - 40;
 
 export default function PropertyCard({ property, onPress, variant = 'default' }: PropertyCardProps) {
   const router = useRouter();
+  const { user } = useUser();
   const [isFavorite, setIsFavorite] = useState(false);
   const [agentInfo, setAgentInfo] = useState<any>(null);
+  const [canEdit, setCanEdit] = useState(false);
   const isGrid = variant === 'grid';
   const isFeatured = variant === 'featured';
   const isCarousel = variant === 'carousel';
@@ -52,6 +55,10 @@ export default function PropertyCard({ property, onPress, variant = 'default' }:
               name: agentData.company_name || userData.name,
               avatar: agentData.company_logo || userData.avatar,
             });
+
+            if (user && userData.id === user.id) {
+              setCanEdit(true);
+            }
           }
         }
       } catch (err) {
@@ -60,7 +67,7 @@ export default function PropertyCard({ property, onPress, variant = 'default' }:
     };
 
     fetchAgent();
-  }, [property.agentId]);
+  }, [property.agentId, user]);
 
   return (
     <TouchableOpacity
@@ -89,20 +96,37 @@ export default function PropertyCard({ property, onPress, variant = 'default' }:
             </View>
           )}
         </View>
-        <TouchableOpacity
-          style={styles.favoriteButton}
-          onPress={(e) => {
-            e?.stopPropagation?.();
-            setIsFavorite(!isFavorite);
-          }}
-        >
-          <Heart
-            size={20}
-            color={isFavorite ? '#EF4444' : '#000000'}
-            fill={isFavorite ? '#EF4444' : 'transparent'}
-            strokeWidth={2}
-          />
-        </TouchableOpacity>
+        <View style={styles.topRightButtons}>
+          {canEdit && (
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={(e) => {
+                e?.stopPropagation?.();
+                router.push(`/agent/edit-property/${property.id}` as any);
+              }}
+            >
+              <Edit2
+                size={16}
+                color={Colors.white}
+                strokeWidth={2.5}
+              />
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={styles.favoriteButton}
+            onPress={(e) => {
+              e?.stopPropagation?.();
+              setIsFavorite(!isFavorite);
+            }}
+          >
+            <Heart
+              size={20}
+              color={isFavorite ? '#EF4444' : '#000000'}
+              fill={isFavorite ? '#EF4444' : 'transparent'}
+              strokeWidth={2}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.content}>
@@ -258,10 +282,27 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
     color: '#FFFFFF',
   },
-  favoriteButton: {
+  topRightButtons: {
     position: 'absolute' as const,
     top: 12,
     right: 12,
+    flexDirection: 'row' as const,
+    gap: 8,
+  },
+  editButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.primary,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  favoriteButton: {
     width: 40,
     height: 40,
     borderRadius: 20,

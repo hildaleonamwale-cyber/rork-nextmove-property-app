@@ -113,7 +113,7 @@ export function useSupabaseBookings(userId?: string, agentId?: string) {
       .eq('id', session.user.id)
       .single();
 
-    const { error } = await supabase.from('bookings').insert({
+    const { data: booking, error } = await supabase.from('bookings').insert({
       property_id: params.propertyId,
       user_id: session.user.id,
       property_title: property.title,
@@ -124,11 +124,59 @@ export function useSupabaseBookings(userId?: string, agentId?: string) {
       client_phone: user?.phone || '',
       notes: params.notes,
       status: 'pending',
-    });
+    }).select().single();
 
     if (error) {
       console.error('Create booking error:', error);
       throw new Error(error.message);
+    }
+
+    if (property.agent_id) {
+      const { data: agentData } = await supabase
+        .from('agents')
+        .select('user_id')
+        .eq('id', property.agent_id)
+        .single();
+
+      if (agentData?.user_id) {
+        const participants = [session.user.id, agentData.user_id];
+        
+        const { data: existingConv } = await supabase
+          .from('conversations')
+          .select('id')
+          .contains('participants', participants)
+          .eq('property_id', params.propertyId)
+          .single();
+
+        let conversationId = existingConv?.id;
+
+        if (!existingConv) {
+          const { data: newConv } = await supabase
+            .from('conversations')
+            .insert({
+              participants: participants,
+              property_id: params.propertyId,
+            })
+            .select()
+            .single();
+          
+          conversationId = newConv?.id;
+        }
+
+        if (conversationId) {
+          await supabase.from('messages').insert({
+            conversation_id: conversationId,
+            sender_id: session.user.id,
+            content: `I've booked a tour for ${property.title} on ${params.visitDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })} at ${params.visitTime}. ${params.notes ? params.notes : 'Looking forward to viewing the property!'}`,
+            read: false,
+          });
+
+          await supabase
+            .from('conversations')
+            .update({ updated_at: new Date().toISOString() })
+            .eq('id', conversationId);
+        }
+      }
     }
 
     await fetchBookings();
