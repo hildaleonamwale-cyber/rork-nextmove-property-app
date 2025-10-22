@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import OptimizedImage, { blurhash } from './OptimizedImage';
-import { Bed, Bath, MapPin, Heart } from 'lucide-react-native';
+import { Bed, Bath, MapPin, Heart, User } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { DesignSystem } from '@/constants/designSystem';
 import { Property } from '@/types/property';
+import { supabase } from '@/lib/supabase';
+import { useRouter } from 'expo-router';
 
 interface PropertyCardProps {
   property: Property;
@@ -16,13 +18,49 @@ const { width } = Dimensions.get('window');
 const CARD_WIDTH = width - 40;
 
 export default function PropertyCard({ property, onPress, variant = 'default' }: PropertyCardProps) {
+  const router = useRouter();
   const [isFavorite, setIsFavorite] = useState(false);
+  const [agentInfo, setAgentInfo] = useState<any>(null);
   const isGrid = variant === 'grid';
   const isFeatured = variant === 'featured';
   const isCarousel = variant === 'carousel';
   const cardWidth = isGrid ? '100%' : isFeatured ? CARD_WIDTH : isCarousel ? '100%' : CARD_WIDTH * 0.85;
 
   const isNew = property.createdAt ? (Date.now() - new Date(property.createdAt).getTime() < 7 * 24 * 60 * 60 * 1000) : false;
+
+  useEffect(() => {
+    const fetchAgent = async () => {
+      if (!property.agentId) return;
+
+      try {
+        const { data: agentData } = await supabase
+          .from('agents')
+          .select('user_id, company_name, company_logo')
+          .eq('id', property.agentId)
+          .single();
+
+        if (agentData) {
+          const { data: userData } = await supabase
+            .from('users')
+            .select('id, name, avatar')
+            .eq('id', agentData.user_id)
+            .single();
+
+          if (userData) {
+            setAgentInfo({
+              userId: userData.id,
+              name: agentData.company_name || userData.name,
+              avatar: agentData.company_logo || userData.avatar,
+            });
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch agent info:', err);
+      }
+    };
+
+    fetchAgent();
+  }, [property.agentId]);
 
   return (
     <TouchableOpacity
@@ -111,6 +149,32 @@ export default function PropertyCard({ property, onPress, variant = 'default' }:
             </View>
           </View>
         </View>
+
+        {agentInfo && (
+          <TouchableOpacity
+            style={styles.agentSection}
+            onPress={(e) => {
+              e.stopPropagation();
+              router.push(`/profile/${agentInfo.userId}`);
+            }}
+            activeOpacity={0.7}
+          >
+            {agentInfo.avatar ? (
+              <OptimizedImage
+                source={{ uri: agentInfo.avatar }}
+                style={styles.agentAvatar}
+              />
+            ) : (
+              <View style={styles.agentAvatarPlaceholder}>
+                <User size={16} color={Colors.white} />
+              </View>
+            )}
+            <View style={styles.agentInfo}>
+              <Text style={styles.agentLabel}>Listed by</Text>
+              <Text style={styles.agentName} numberOfLines={1}>{agentInfo.name}</Text>
+            </View>
+          </TouchableOpacity>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -280,5 +344,42 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '500' as const,
     color: '#64748B',
+  },
+  agentSection: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 10,
+    marginTop: 14,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  agentAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.gray[100],
+  },
+  agentAvatarPlaceholder: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.primary,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  agentInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  agentLabel: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '500' as const,
+  },
+  agentName: {
+    fontSize: 14,
+    color: '#0F172A',
+    fontWeight: '600' as const,
   },
 });

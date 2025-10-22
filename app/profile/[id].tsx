@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -35,7 +35,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
 import PropertyCard from '@/components/PropertyCard';
 import SectionHeader from '@/components/SectionHeader';
-import { trpc } from '@/lib/trpc';
+import { supabase } from '@/lib/supabase';
 
 const { width } = Dimensions.get('window');
 
@@ -45,18 +45,123 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
 
   const [isFollowing, setIsFollowing] = useState(false);
+  const [agentProfile, setAgentProfile] = useState<any>(null);
+  const [agentLoading, setAgentLoading] = useState(true);
+  const [agentError, setAgentError] = useState<any>(null);
+  const [properties, setProperties] = useState<any[]>([]);
 
-  const { data: agentProfile, isLoading: agentLoading, error: agentError } = trpc.agents.getProfile.useQuery(
-    { userId: id! },
-    { enabled: !!id }
-  );
+  useEffect(() => {
+    if (!id) return;
 
-  const { data: propertiesData } = trpc.properties.list.useQuery(
-    { agentId: id, limit: 50 },
-    { enabled: !!id }
-  );
+    const fetchProfileAndProperties = async () => {
+      try {
+        setAgentLoading(true);
+        
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('id, name, email, phone, avatar')
+          .eq('id', id)
+          .single();
 
-  const properties = propertiesData?.properties || [];
+        if (userError) throw userError;
+
+        const { data: agentData, error: agentErr } = await supabase
+          .from('agents')
+          .select('*')
+          .eq('user_id', id)
+          .single();
+
+        if (!agentErr && agentData) {
+          setAgentProfile({
+            userId: userData.id,
+            userName: userData.name,
+            userEmail: userData.email,
+            userPhone: userData.phone,
+            userAvatar: userData.avatar,
+            companyName: agentData.company_name,
+            companyLogo: agentData.company_logo,
+            banner: agentData.banner,
+            bio: agentData.bio,
+            package: agentData.package,
+            specialties: agentData.specialties || [],
+            yearsExperience: agentData.years_experience,
+            languages: agentData.languages || [],
+            email: agentData.email || userData.email,
+            phone: agentData.phone || userData.phone,
+            website: agentData.website,
+            address: agentData.address,
+            socialMedia: agentData.social_media || {},
+            followers: 0,
+          });
+        } else {
+          setAgentProfile({
+            userId: userData.id,
+            userName: userData.name,
+            userEmail: userData.email,
+            userPhone: userData.phone,
+            userAvatar: userData.avatar,
+            bio: '',
+            followers: 0,
+          });
+        }
+
+        const { data: propsData } = await supabase
+          .from('properties')
+          .select('*')
+          .or(`user_id.eq.${id},agent_id.eq.${agentData?.id}`)
+          .order('created_at', { ascending: false });
+
+        if (propsData) {
+          const transformedProps = propsData.map((p: any) => ({
+            id: p.id,
+            title: p.title,
+            description: p.description,
+            price: p.price,
+            priceType: p.price_type,
+            images: typeof p.images === 'string' ? JSON.parse(p.images) : p.images,
+            location: {
+              address: p.address || '',
+              city: p.city || '',
+              area: p.state || '',
+              province: p.state || '',
+              country: p.country || 'Zimbabwe',
+            },
+            bedrooms: p.bedrooms || 0,
+            bathrooms: p.bathrooms || 0,
+            area: p.area || 0,
+            status: p.status,
+            propertyType: p.property_type,
+            listingCategory: p.listing_category,
+            createdAt: p.created_at,
+          }));
+          setProperties(transformedProps);
+        }
+      } catch (err: any) {
+        console.error('Profile fetch error:', err);
+        setAgentError(err);
+      } finally {
+        setAgentLoading(false);
+      }
+    };
+
+    fetchProfileAndProperties();
+
+    const agentChannel = supabase
+      .channel(`agent_${id}_changes`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'agents', filter: `user_id=eq.${id}` }, () => {
+        console.log('Agent profile changed, refetching...');
+        fetchProfileAndProperties();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'users', filter: `id=eq.${id}` }, () => {
+        console.log('User profile changed, refetching...');
+        fetchProfileAndProperties();
+      })
+      .subscribe();
+
+    return () => {
+      agentChannel.unsubscribe();
+    };
+  }, [id]);
 
   if (agentLoading) {
     return (
