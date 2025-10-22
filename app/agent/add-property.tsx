@@ -164,12 +164,9 @@ export default function AddPropertyScreen() {
 
       console.log('Property created successfully:', data);
       setShowSuccess(true);
+      
       setTimeout(() => {
-        if (router.canGoBack()) {
-          router.back();
-        } else {
-          router.replace('/agent/dashboard' as any);
-        }
+        router.replace('/agent/dashboard' as any);
       }, 1500);
     } catch (error: any) {
       console.error('Failed to create property:', error);

@@ -34,13 +34,15 @@ export function useSupabaseProperties(filters?: PropertyFilters) {
 
     const subscription = supabase
       .channel('properties_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'properties' }, () => {
-        console.log('Properties changed, refetching...');
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'properties' }, (payload) => {
+        console.log('Properties changed:', payload.eventType, 'refetching...');
         if (filters !== undefined) {
           fetchProperties();
         }
       })
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Properties subscription status:', status);
+      });
 
     return () => {
       subscription.unsubscribe();

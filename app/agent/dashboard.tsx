@@ -42,13 +42,19 @@ export default function AgentDashboardScreen() {
   const fetchProperties = React.useCallback(async () => {
     if (!profile?.userId) return;
 
-    const { data } = await supabase
+    console.log('Fetching properties for user:', profile.userId);
+    const { data, error } = await supabase
       .from('properties')
       .select('*')
       .eq('user_id', profile.userId)
       .order('created_at', { ascending: false });
 
-    setProperties(data || []);
+    if (error) {
+      console.error('Error fetching properties:', error);
+    } else {
+      console.log('Fetched properties count:', data?.length || 0);
+      setProperties(data || []);
+    }
   }, [profile?.userId]);
 
   const fetchAnalytics = React.useCallback(async () => {
@@ -96,13 +102,15 @@ export default function AgentDashboardScreen() {
             table: 'properties',
             filter: `user_id=eq.${profile.userId}`,
           },
-          () => {
-            console.log('Agent properties changed, refetching...');
+          (payload) => {
+            console.log('Agent properties changed:', payload.eventType);
             fetchProperties();
             fetchAnalytics();
           }
         )
-        .subscribe();
+        .subscribe((status) => {
+          console.log('Subscription status:', status);
+        });
 
       return () => {
         subscription.unsubscribe();
