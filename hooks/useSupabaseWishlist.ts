@@ -173,8 +173,8 @@ function transformProperty(data: any): Listing | null {
 
   return {
     ...base,
-    bedrooms: data.beds || data.bedrooms || 0,
-    bathrooms: data.baths || data.bathrooms || 0,
+    bedrooms: data.bedrooms || 0,
+    bathrooms: data.bathrooms || 0,
     propertyType: data.property_type as any,
     amenities: data.amenities || [],
   } as any;
