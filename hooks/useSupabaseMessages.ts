@@ -111,13 +111,19 @@ export function useSupabaseConversations(userId: string) {
             propertyTitle = property?.title;
           }
 
+          const parseDate = (dateValue: any): Date => {
+            if (!dateValue) return new Date();
+            const parsed = new Date(dateValue);
+            return isNaN(parsed.getTime()) ? new Date() : parsed;
+          };
+          
           return {
             id: conv.id,
             participants: conv.participants,
             participantNames: participantData.map((p) => p?.name || 'User'),
             participantAvatars: participantData.map((p) => p?.avatar || ''),
             lastMessage: lastMessage?.content || '',
-            lastMessageTime: lastMessage ? new Date(lastMessage.created_at) : new Date(),
+            lastMessageTime: parseDate(lastMessage?.created_at),
             unreadCount: unreadCount || 0,
             propertyId: conv.property_id,
             propertyTitle: propertyTitle,
@@ -233,6 +239,12 @@ export function useSupabaseMessages(conversationId: string) {
 }
 
 function transformMessage(data: any): Message {
+  const parseDate = (dateValue: any): Date => {
+    if (!dateValue) return new Date();
+    const parsed = new Date(dateValue);
+    return isNaN(parsed.getTime()) ? new Date() : parsed;
+  };
+  
   return {
     id: data.id,
     conversationId: data.conversation_id,
@@ -241,6 +253,6 @@ function transformMessage(data: any): Message {
     senderAvatar: data.users?.avatar,
     content: data.content,
     read: data.read,
-    createdAt: new Date(data.created_at),
+    createdAt: parseDate(data.created_at),
   };
 }

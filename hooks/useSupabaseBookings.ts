@@ -156,6 +156,12 @@ function transformBooking(data: any): Booking {
     ? JSON.parse(data.properties.images) 
     : data.properties?.images || [];
   
+  const parseDate = (dateValue: any): Date => {
+    if (!dateValue) return new Date();
+    const parsed = new Date(dateValue);
+    return isNaN(parsed.getTime()) ? new Date() : parsed;
+  };
+  
   return {
     id: data.id,
     propertyId: data.property_id,
@@ -167,11 +173,11 @@ function transformBooking(data: any): Booking {
     userPhone: data.users?.phone || data.client_phone || '',
     agentId: data.properties?.agent_id || '',
     agentName: 'Agent',
-    visitDate: new Date(data.date),
-    visitTime: data.time,
+    visitDate: parseDate(data.date),
+    visitTime: data.time || '',
     status: data.status,
     notes: data.notes,
-    createdAt: new Date(data.created_at),
-    updatedAt: new Date(data.created_at),
+    createdAt: parseDate(data.created_at),
+    updatedAt: parseDate(data.updated_at || data.created_at),
   };
 }

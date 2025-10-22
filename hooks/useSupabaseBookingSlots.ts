@@ -127,9 +127,15 @@ export function useSupabaseBookingSlots(agentId?: string) {
 }
 
 function transformBookingSlot(data: any): BookingSlot {
+  const parseDate = (dateValue: any): Date => {
+    if (!dateValue) return new Date();
+    const parsed = new Date(dateValue);
+    return isNaN(parsed.getTime()) ? new Date() : parsed;
+  };
+  
   return {
     id: data.id,
-    date: new Date(data.date),
+    date: parseDate(data.date),
     startTime: data.start_time,
     endTime: data.end_time,
     booked: data.booked,

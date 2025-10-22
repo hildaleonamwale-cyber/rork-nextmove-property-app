@@ -199,10 +199,19 @@ function transformProperty(data: any): ManagedProperty {
     tenantName: data.tenant_name,
     tenantPhone: data.tenant_phone,
     tenantEmail: data.tenant_email,
-    tenantMoveInDate: data.tenant_move_in_date ? new Date(data.tenant_move_in_date) : undefined,
+    tenantMoveInDate: data.tenant_move_in_date ? (() => {
+      const parsed = new Date(data.tenant_move_in_date);
+      return isNaN(parsed.getTime()) ? undefined : parsed;
+    })() : undefined,
     isListed: data.is_listed,
     listedPropertyId: data.listed_property_id,
-    createdAt: new Date(data.created_at),
-    updatedAt: new Date(data.updated_at),
+    createdAt: (() => {
+      const parsed = new Date(data.created_at);
+      return isNaN(parsed.getTime()) ? new Date() : parsed;
+    })(),
+    updatedAt: (() => {
+      const parsed = new Date(data.updated_at);
+      return isNaN(parsed.getTime()) ? new Date() : parsed;
+    })(),
   };
 }

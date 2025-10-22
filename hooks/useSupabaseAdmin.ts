@@ -514,6 +514,12 @@ export function useSupabaseUserStats() {
 }
 
 function transformBanner(data: any): Banner {
+  const parseDate = (dateValue: any): Date => {
+    if (!dateValue) return new Date();
+    const parsed = new Date(dateValue);
+    return isNaN(parsed.getTime()) ? new Date() : parsed;
+  };
+  
   return {
     id: data.id,
     title: data.title,
@@ -521,7 +527,7 @@ function transformBanner(data: any): Banner {
     link: data.link,
     order: data.order,
     enabled: data.enabled,
-    createdAt: new Date(data.created_at),
+    createdAt: parseDate(data.created_at),
   };
 }
 
@@ -535,6 +541,12 @@ function transformSection(data: any): Section {
     }
   }
   
+  const parseDate = (dateValue: any): Date => {
+    if (!dateValue) return new Date();
+    const parsed = new Date(dateValue);
+    return isNaN(parsed.getTime()) ? new Date() : parsed;
+  };
+  
   return {
     id: data.id,
     title: data.title,
@@ -542,6 +554,6 @@ function transformSection(data: any): Section {
     config: config,
     order: data.order,
     enabled: data.enabled,
-    createdAt: new Date(data.created_at),
+    createdAt: parseDate(data.created_at),
   };
 }

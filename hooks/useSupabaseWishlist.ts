@@ -143,7 +143,10 @@ function transformProperty(data: any): Listing | null {
     bookings: data.bookings || 0,
     inquiries: data.inquiries || 0,
     listingCategory: data.listing_category as any,
-    createdAt: data.created_at ? new Date(data.created_at) : undefined,
+    createdAt: data.created_at ? (() => {
+      const parsed = new Date(data.created_at);
+      return isNaN(parsed.getTime()) ? undefined : parsed;
+    })() : undefined,
   };
 
   if (data.listing_category === 'stand') {

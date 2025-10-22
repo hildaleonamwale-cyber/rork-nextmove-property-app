@@ -129,6 +129,12 @@ export function useSupabaseNotifications(userId: string) {
 }
 
 function transformNotification(data: any): Notification {
+  const parseDate = (dateValue: any): Date => {
+    if (!dateValue) return new Date();
+    const parsed = new Date(dateValue);
+    return isNaN(parsed.getTime()) ? new Date() : parsed;
+  };
+  
   return {
     id: data.id,
     userId: data.user_id,
@@ -137,6 +143,6 @@ function transformNotification(data: any): Notification {
     message: data.message,
     read: data.read,
     data: data.data,
-    createdAt: new Date(data.created_at),
+    createdAt: parseDate(data.created_at),
   };
 }

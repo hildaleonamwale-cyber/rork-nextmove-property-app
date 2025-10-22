@@ -423,7 +423,10 @@ function transformAgent(data: any): AgentProfile {
     licenseNumber: data.license_number,
     yearsOfExperience: data.years_of_experience,
     packageLevel: data.package_level,
-    packageExpiry: data.package_expiry ? new Date(data.package_expiry) : undefined,
+    packageExpiry: data.package_expiry ? (() => {
+      const parsed = new Date(data.package_expiry);
+      return isNaN(parsed.getTime()) ? undefined : parsed;
+    })() : undefined,
     areasServed: data.areas_served,
     website: data.website,
     facebook: data.facebook,
@@ -432,12 +435,24 @@ function transformAgent(data: any): AgentProfile {
     linkedin: data.linkedin,
     rating: data.rating,
     reviewCount: data.review_count,
-    createdAt: new Date(data.created_at),
-    updatedAt: new Date(data.updated_at),
+    createdAt: (() => {
+      const parsed = new Date(data.created_at);
+      return isNaN(parsed.getTime()) ? new Date() : parsed;
+    })(),
+    updatedAt: (() => {
+      const parsed = new Date(data.updated_at);
+      return isNaN(parsed.getTime()) ? new Date() : parsed;
+    })(),
   };
 }
 
 function transformManagedProperty(data: any): ManagedProperty {
+  const parseDate = (dateValue: any): Date | undefined => {
+    if (!dateValue) return undefined;
+    const parsed = new Date(dateValue);
+    return isNaN(parsed.getTime()) ? undefined : parsed;
+  };
+  
   return {
     id: data.id,
     agentId: data.agent_id,
@@ -451,15 +466,21 @@ function transformManagedProperty(data: any): ManagedProperty {
     tenantName: data.tenant_name,
     tenantPhone: data.tenant_phone,
     tenantEmail: data.tenant_email,
-    tenantMoveInDate: data.tenant_move_in_date ? new Date(data.tenant_move_in_date) : undefined,
+    tenantMoveInDate: parseDate(data.tenant_move_in_date),
     isListed: data.is_listed,
     listedPropertyId: data.listed_property_id,
-    createdAt: new Date(data.created_at),
-    updatedAt: new Date(data.updated_at),
+    createdAt: parseDate(data.created_at) || new Date(),
+    updatedAt: parseDate(data.updated_at) || new Date(),
   };
 }
 
 function transformStaff(data: any): StaffMember {
+  const parseDate = (dateValue: any): Date | undefined => {
+    if (!dateValue) return undefined;
+    const parsed = new Date(dateValue);
+    return isNaN(parsed.getTime()) ? undefined : parsed;
+  };
+  
   return {
     id: data.id,
     agentId: data.agent_id,
@@ -470,8 +491,8 @@ function transformStaff(data: any): StaffMember {
     permissions: data.permissions ? JSON.parse(data.permissions) : [],
     active: data.active,
     inviteToken: data.invite_token,
-    inviteExpiry: data.invite_expiry ? new Date(data.invite_expiry) : undefined,
-    createdAt: new Date(data.created_at),
-    updatedAt: new Date(data.updated_at),
+    inviteExpiry: parseDate(data.invite_expiry),
+    createdAt: parseDate(data.created_at) || new Date(),
+    updatedAt: parseDate(data.updated_at) || new Date(),
   };
 }
