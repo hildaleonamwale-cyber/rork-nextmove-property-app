@@ -93,45 +93,80 @@ export function useSupabaseBookings(userId?: string, agentId?: string) {
     visitTime: string;
     notes?: string;
   }) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) throw new Error('Not authenticated');
+    try {
+      console.log('Creating booking with params:', params);
+      
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error('Session error:', sessionError);
+        throw new Error('Authentication error. Please log in again.');
+      }
+      
+      if (!session || !session.user) {
+        console.error('No session or user found');
+        throw new Error('Not authenticated. Please log in.');
+      }
 
-    const { data: property, error: propertyError } = await supabase
-      .from('properties')
-      .select('agent_id, title')
-      .eq('id', params.propertyId)
-      .single();
+      console.log('User authenticated:', session.user.id);
 
-    if (propertyError) {
-      console.error('Property fetch error:', propertyError);
-      throw new Error('Property not found');
-    }
+      const { data: property, error: propertyError } = await supabase
+        .from('properties')
+        .select('agent_id, title')
+        .eq('id', params.propertyId)
+        .single();
 
-    const { data: user } = await supabase
-      .from('users')
-      .select('name, email, phone')
-      .eq('id', session.user.id)
-      .single();
+      if (propertyError) {
+        console.error('Property fetch error:', propertyError);
+        throw new Error('Property not found');
+      }
 
-    const { error } = await supabase.from('bookings').insert({
-      property_id: params.propertyId,
-      user_id: session.user.id,
-      property_title: property.title,
-      date: params.visitDate.toLocaleDateString(),
-      time: params.visitTime,
-      client_name: user?.name || 'User',
-      client_email: user?.email || '',
-      client_phone: user?.phone || '',
-      notes: params.notes,
-      status: 'pending',
-    });
+      console.log('Property found:', property.title);
 
-    if (error) {
+      const { data: user, error: userError } = await supabase
+        .from('users')
+        .select('name, email, phone')
+        .eq('id', session.user.id)
+        .single();
+
+      if (userError) {
+        console.error('User fetch error:', userError);
+      }
+
+      console.log('User data:', user);
+
+      const bookingData = {
+        property_id: params.propertyId,
+        user_id: session.user.id,
+        property_title: property.title,
+        date: params.visitDate.toISOString().split('T')[0],
+        time: params.visitTime,
+        client_name: user?.name || 'User',
+        client_email: user?.email || session.user.email || '',
+        client_phone: user?.phone || '',
+        notes: params.notes || null,
+        status: 'pending',
+      };
+
+      console.log('Inserting booking:', bookingData);
+
+      const { error: insertError, data: insertedBooking } = await supabase
+        .from('bookings')
+        .insert(bookingData)
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('Create booking error:', insertError);
+        throw new Error(insertError.message || 'Failed to create booking');
+      }
+
+      console.log('Booking created successfully:', insertedBooking);
+      await fetchBookings();
+    } catch (error: any) {
       console.error('Create booking error:', error);
-      throw new Error(error.message);
+      throw error;
     }
-
-    await fetchBookings();
   };
 
   const updateBookingStatus = async (bookingId: string, status: Booking['status']) => {

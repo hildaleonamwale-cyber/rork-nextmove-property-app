@@ -48,6 +48,7 @@ import { Listing, Property, Stand, CommercialProperty } from '@/types/property';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import SuccessPrompt from '@/components/SuccessPrompt';
 import { useBookings } from '@/contexts/BookingContext';
+import { useUser } from '@/contexts/UserContext';
 import { useSupabaseProperty } from '@/hooks/useSupabaseProperties';
 import { supabase } from '@/lib/supabase';
 
@@ -67,6 +68,7 @@ export default function PropertyDetailScreen() {
   const { id } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
   const { addBooking } = useBookings();
+  const { user, isAuthenticated } = useUser();
 
   const propertyId = typeof id === 'string' ? id : Array.isArray(id) ? id[0] : '';
   const { property: propertyData, isLoading } = useSupabaseProperty(propertyId);
@@ -282,28 +284,41 @@ export default function PropertyDetailScreen() {
     
     if (!selectedDate || !selectedTime) return;
 
-    const booking = await addBooking({
-      propertyId: listing.id,
-      propertyTitle: listing.title,
-      propertyImage: listing.images[0],
-      date: selectedDate.toLocaleDateString('en-US', { 
-        weekday: 'long', 
-        month: 'short', 
-        day: 'numeric',
-        year: 'numeric'
-      }),
-      time: selectedTime,
-      clientName: 'John Doe',
-    });
-    
-    console.log('Tour booking created:', booking);
-    
-    setSuccessMessage('Tour Booked Successfully!');
-    setShowSuccess(true);
-    
-    setSelectedDate(null);
-    setSelectedTime('');
-    setBookingNotes('');
+    if (!isAuthenticated) {
+      router.push('/login');
+      return;
+    }
+
+    try {
+      await addBooking({
+        propertyId: listing.id,
+        propertyTitle: listing.title,
+        propertyImage: listing.images[0],
+        date: selectedDate.toLocaleDateString('en-US', { 
+          weekday: 'long', 
+          month: 'short', 
+          day: 'numeric',
+          year: 'numeric'
+        }),
+        time: selectedTime,
+        clientName: user?.name || 'User',
+      });
+      
+      setSuccessMessage('Tour Booked Successfully!');
+      setShowSuccess(true);
+      
+      setSelectedDate(null);
+      setSelectedTime('');
+      setBookingNotes('');
+    } catch (error: any) {
+      console.error('Failed to add booking:', error);
+      if (error.message?.includes('Not authenticated')) {
+        router.push('/login');
+      } else {
+        setSuccessMessage('Failed to book tour. Please try again.');
+        setShowSuccess(true);
+      }
+    }
   };
 
   return (
