@@ -11,6 +11,7 @@ import {
   Platform,
   Linking,
   Share,
+  ActivityIndicator,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -70,34 +71,67 @@ export default function PropertyDetailScreen() {
   const propertyId = typeof id === 'string' ? id : Array.isArray(id) ? id[0] : '';
   const { property: propertyData, isLoading } = useSupabaseProperty(propertyId);
   const [agent, setAgent] = React.useState<any>(null);
+  const [agentLoading, setAgentLoading] = React.useState(false);
 
   React.useEffect(() => {
     const fetchAgent = async () => {
       if (!propertyData?.agentId) return;
       
-      const { data: userData } = await supabase
-        .from('users')
-        .select('id, name, email, phone, avatar')
-        .eq('id', propertyData.agentId)
-        .single();
+      try {
+        setAgentLoading(true);
+        console.log('Fetching agent for agentId:', propertyData.agentId);
+        
+        const { data: agentData, error: agentError } = await supabase
+          .from('agents')
+          .select('*')
+          .eq('id', propertyData.agentId)
+          .single();
 
-      const { data: agentData } = await supabase
-        .from('agents')
-        .select('*')
-        .eq('user_id', propertyData.agentId)
-        .single();
+        if (agentError) {
+          console.error('Agent fetch error:', agentError);
+          return;
+        }
 
-      if (userData) {
+        if (!agentData) {
+          console.error('No agent data found');
+          return;
+        }
+
+        console.log('Agent data found:', agentData);
+
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('id, name, email, phone, avatar')
+          .eq('id', agentData.user_id)
+          .single();
+
+        if (userError) {
+          console.error('User fetch error:', userError);
+          return;
+        }
+
+        if (!userData) {
+          console.error('No user data found');
+          return;
+        }
+
+        console.log('User data found:', userData);
+
         setAgent({
           id: userData.id,
+          agentId: agentData.id,
           name: userData.name,
           email: userData.email,
           phone: userData.phone,
-          avatar: userData.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(userData.name),
+          avatar: userData.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}`,
           title: agentData?.company_name || 'Real Estate Agent',
           companyName: agentData?.company_name,
           bio: agentData?.bio,
         });
+      } catch (err) {
+        console.error('Error fetching agent:', err);
+      } finally {
+        setAgentLoading(false);
       }
     };
 
@@ -550,7 +584,11 @@ export default function PropertyDetailScreen() {
           <View style={styles.agentSection}>
             <Text style={styles.agentSectionTitle}>Listing Agent</Text>
             
-            {agent && (
+            {agentLoading ? (
+              <View style={styles.agentLoadingContainer}>
+                <ActivityIndicator size="small" color={Colors.primary} />
+              </View>
+            ) : agent ? (
               <View style={styles.agentCardWrapper}>
                 <TouchableOpacity 
                   style={styles.agentCard} 
@@ -600,6 +638,10 @@ export default function PropertyDetailScreen() {
                     </TouchableOpacity>
                   </View>
                 </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.agentNotFoundContainer}>
+                <Text style={styles.agentNotFoundText}>Agent information not available</Text>
               </View>
             )}
           </View>
@@ -1344,5 +1386,20 @@ const styles = StyleSheet.create({
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
   },
-
+  agentLoadingContainer: {
+    padding: 40,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  agentNotFoundContainer: {
+    padding: 20,
+    backgroundColor: Colors.gray[50],
+    borderRadius: 16,
+    alignItems: 'center' as const,
+  },
+  agentNotFoundText: {
+    fontSize: 14,
+    color: Colors.text.secondary,
+    fontWeight: '500' as const,
+  },
 });
