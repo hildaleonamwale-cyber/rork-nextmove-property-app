@@ -43,8 +43,7 @@ import {
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
-import { mockProperties, mockAgents, mockAgencies, mockStands, mockCommercialProperties } from '@/mocks/properties';
-import { Listing, Property, Stand, CommercialProperty } from '@/types/property';
+import { Property, Stand, CommercialProperty } from '@/types/property';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import SuccessPrompt from '@/components/SuccessPrompt';
 import { useBookings } from '@/contexts/BookingContext';
@@ -69,7 +68,7 @@ export default function PropertyDetailScreen() {
   const { addBooking } = useBookings();
 
   const propertyId = typeof id === 'string' ? id : Array.isArray(id) ? id[0] : '';
-  const { property: propertyData, isLoading } = useSupabaseProperty(propertyId);
+  const { property: propertyData } = useSupabaseProperty(propertyId);
   const [agent, setAgent] = React.useState<any>(null);
   const [agentLoading, setAgentLoading] = React.useState(false);
 
@@ -139,7 +138,6 @@ export default function PropertyDetailScreen() {
   }, [propertyData?.agentId]);
 
   const listing = propertyData;
-  const agency = null;
   
   const isStand = listing?.listingCategory === 'stand';
   const isCommercial = listing?.listingCategory === 'commercial';
