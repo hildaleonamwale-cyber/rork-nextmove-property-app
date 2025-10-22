@@ -81,6 +81,9 @@ export async function signup(params: SignupParams): Promise<{ user: SupabaseUser
 
   if (authError) {
     console.error('[supabase-auth] Signup error:', authError);
+    if (authError.message.includes('Network') || authError.message.includes('fetch')) {
+      throw new Error('Network connection failed. Please check your internet connection and try again.');
+    }
     throw new Error(authError.message);
   }
 
@@ -156,6 +159,9 @@ export async function login(params: LoginParams): Promise<{ user: SupabaseUser }
 
   if (authError) {
     console.error('[supabase-auth] Login error:', authError);
+    if (authError.message.includes('Network') || authError.message.includes('fetch')) {
+      throw new Error('Network connection failed. Please check your internet connection and try again.');
+    }
     throw new Error(authError.message);
   }
 

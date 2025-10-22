@@ -42,7 +42,7 @@ export default function LoginScreen() {
 
     try {
       setIsLoading(true);
-      console.log('Attempting Supabase login with:', { email, loginMode });
+      console.log('[Login] Attempting login with:', { email, loginMode, platform: Platform.OS });
 
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
@@ -50,19 +50,22 @@ export default function LoginScreen() {
       });
 
       if (error) {
-        console.error('Supabase auth error:', error);
+        console.error('[Login] Supabase auth error:', error);
+        
+        if (error.message.includes('Network')) {
+          throw new Error('Network connection failed. Please check your internet connection and try again.');
+        }
+        
         throw new Error(error.message);
       }
 
       if (!data.user) {
-        console.error('No user returned from Supabase');
+        console.error('[Login] No user returned from Supabase');
         throw new Error('Login failed: No user data received');
       }
 
-      console.log('Supabase login successful!');
-      console.log('User ID:', data.user.id);
-      console.log('User email:', data.user.email);
-      console.log('Session:', data.session ? 'Active' : 'None');
+      console.log('[Login] Auth successful! User ID:', data.user.id);
+      console.log('[Login] Session:', data.session ? 'Active' : 'None');
 
       const { data: userData, error: userError } = await supabase
         .from('users')
@@ -71,14 +74,16 @@ export default function LoginScreen() {
         .single();
 
       if (userError) {
-        console.error('Error fetching user profile:', userError);
+        console.error('[Login] Error fetching user profile:', userError);
       } else {
-        console.log('User profile:', userData);
+        console.log('[Login] User profile loaded:', userData.email);
         await AsyncStorage.setItem('@user_mode', userData.role === 'admin' ? 'admin' : 'client');
       }
 
+      console.log('[Login] Refreshing user context...');
       await refetch();
       
+      console.log('[Login] Navigation based on role:', userData?.role);
       if (userData) {
         if (loginMode === 'admin' || userData.role === 'admin') {
           await enableSuperAdmin();
@@ -92,9 +97,18 @@ export default function LoginScreen() {
         router.replace('/(tabs)/home' as any);
       }
     } catch (error: any) {
-      console.error('Login error:', error);
-      console.error('Error details:', error.message || JSON.stringify(error));
-      Alert.alert('Login Failed', error.message || 'Invalid email or password');
+      console.error('[Login] Error occurred:', error);
+      console.error('[Login] Error details:', error.message || JSON.stringify(error));
+      
+      let errorMessage = error.message || 'Invalid email or password';
+      
+      if (errorMessage.includes('Invalid login credentials')) {
+        errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+      } else if (errorMessage.includes('Email not confirmed')) {
+        errorMessage = 'Please verify your email address before logging in.';
+      }
+      
+      Alert.alert('Login Failed', errorMessage);
     } finally {
       setIsLoading(false);
     }

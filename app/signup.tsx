@@ -56,7 +56,7 @@ export default function SignupScreen() {
     }
     try {
       setIsLoading(true);
-      console.log('Creating account:', { name, email, phone });
+      console.log('[Signup] Creating account:', { name, email, phone, platform: Platform.OS });
       
       const { user } = await supabaseSignup({
         name,
@@ -67,21 +67,30 @@ export default function SignupScreen() {
 
       await AsyncStorage.setItem('@user_mode', 'client');
 
-      console.log('Signup successful:', user);
+      console.log('[Signup] Signup successful:', user.email);
 
+      console.log('[Signup] Refreshing user context...');
       await refetch();
 
+      console.log('[Signup] Account created successfully!');
       setShowSuccess(true);
       setTimeout(() => {
         setShowSuccess(false);
         router.replace('/(tabs)/home' as any);
       }, 2000);
     } catch (error: any) {
-      console.error('Signup error:', error);
+      console.error('[Signup] Error occurred:', error);
+      console.error('[Signup] Error details:', error.message || JSON.stringify(error));
       
       let errorMessage = 'An error occurred during signup';
       
-      if (error.message?.includes('User already registered')) {
+      if (error.message?.includes('Network')) {
+        Alert.alert(
+          'Connection Error',
+          'Network connection failed. Please check your internet connection and try again.'
+        );
+        return;
+      } else if (error.message?.includes('User already registered') || error.message?.includes('already been registered')) {
         Alert.alert(
           'Account Already Exists',
           'An account with this email already exists. Would you like to log in instead?',

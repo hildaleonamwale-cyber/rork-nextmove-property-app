@@ -7,8 +7,16 @@ const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://rrmahskolpe
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJybWFoc2tvbHBleWx5d2d3Ym93Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA5Mjg4MTUsImV4cCI6MjA3NjUwNDgxNX0.vvaqSGlM5v2xkROuHYgWWFNIorJ9lZ-mwl91MFP6L6o';
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase credentials');
+  console.error('[Supabase] ERROR: Missing Supabase credentials');
+  console.error('[Supabase] URL:', supabaseUrl);
+  console.error('[Supabase] Key:', supabaseAnonKey ? 'Present' : 'Missing');
 }
+
+console.log('[Supabase] Configuration:', {
+  url: supabaseUrl,
+  platform: Platform.OS,
+  hasKey: !!supabaseAnonKey,
+});
 
 const AsyncStorageAdapter = {
   getItem: async (key: string) => {
@@ -59,6 +67,21 @@ export const supabase = createClient(
     global: {
       headers: {
         'x-client-platform': Platform.OS,
+      },
+      fetch: (url, options = {}) => {
+        console.log('[Supabase] Making request to:', url);
+        return fetch(url, {
+          ...options,
+          headers: {
+            ...options.headers,
+            'Content-Type': 'application/json',
+          },
+        }).catch((error) => {
+          console.error('[Supabase] Fetch error:', error);
+          console.error('[Supabase] URL was:', url);
+          console.error('[Supabase] Platform:', Platform.OS);
+          throw new Error(`Network request failed: ${error.message}. Please check your internet connection and try again.`);
+        });
       },
     },
   });
