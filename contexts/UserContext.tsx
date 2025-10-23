@@ -11,39 +11,35 @@ export const [UserProvider, useUser] = createContextHook(() => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log('[UserContext] Initializing...');
     loadUser();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('[UserContext] Auth state changed:', event, session ? 'Session exists' : 'No session');
+      console.log('Auth state changed:', event, session ? 'Session exists' : 'No session');
       
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        console.log('[UserContext] Session active/refreshed, loading user...');
+        console.log('Session active/refreshed, loading user...');
         await loadUser(true);
       } else if (event === 'SIGNED_OUT') {
-        console.log('[UserContext] User signed out');
+        console.log('User signed out');
         setUser(null);
         setError(null);
       }
     });
 
     return () => {
-      console.log('[UserContext] Cleanup');
       subscription.unsubscribe();
     };
   }, []);
 
   const loadUser = async (skipCache: boolean = false) => {
     try {
-      console.log('[UserContext] Loading user... skipCache:', skipCache);
       setIsLoading(true);
       setError(null);
       const currentUser = await getCurrentUser(skipCache);
-      console.log('[UserContext] User loaded:', currentUser ? currentUser.email : 'No user');
       setUser(currentUser);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error('[UserContext] Error loading user:', errorMessage);
+      console.error('Error loading user:', errorMessage);
       setError(errorMessage);
       setUser(null);
     } finally {

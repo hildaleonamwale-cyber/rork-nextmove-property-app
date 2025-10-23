@@ -43,19 +43,10 @@ export async function apiRequest<T>(
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      console.log('[API] Request timeout reached after 30 seconds');
-      controller.abort();
-    }, 30000);
-
     const response = await fetch(`${API_URL}${endpoint}`, {
       ...options,
-      signal: controller.signal,
       headers,
     });
-
-    clearTimeout(timeoutId);
 
     const contentType = response.headers.get('content-type');
     const isJson = contentType?.includes('application/json');
@@ -80,11 +71,6 @@ export async function apiRequest<T>(
   } catch (error) {
     if (error instanceof ApiError) {
       throw error;
-    }
-    
-    if ((error as any).name === 'AbortError') {
-      console.error('API Request timeout');
-      throw new ApiError(0, 'Request timeout. The server is taking too long to respond. Please check your connection.');
     }
     
     console.error('API Request failed:', error);
