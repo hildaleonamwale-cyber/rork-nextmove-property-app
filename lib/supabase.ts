@@ -70,16 +70,37 @@ export const supabase = createClient(
       },
       fetch: (url, options = {}) => {
         console.log('[Supabase] Making request to:', url);
+        console.log('[Supabase] Request timeout: 30 seconds');
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+          console.log('[Supabase] Request timeout reached');
+          controller.abort();
+        }, 30000);
+        
         return fetch(url, {
           ...options,
+          signal: controller.signal,
           headers: {
             ...options.headers,
             'Content-Type': 'application/json',
           },
-        }).catch((error) => {
+        })
+        .then((response) => {
+          clearTimeout(timeoutId);
+          console.log('[Supabase] Request completed successfully');
+          return response;
+        })
+        .catch((error) => {
+          clearTimeout(timeoutId);
           console.error('[Supabase] Fetch error:', error);
           console.error('[Supabase] URL was:', url);
           console.error('[Supabase] Platform:', Platform.OS);
+          
+          if (error.name === 'AbortError') {
+            throw new Error('Request timeout. The server is taking too long to respond. Please check your internet connection and try again.');
+          }
+          
           throw new Error(`Network request failed: ${error.message}. Please check your internet connection and try again.`);
         });
       },
