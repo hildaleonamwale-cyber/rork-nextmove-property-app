@@ -72,7 +72,16 @@ export const updatePropertyProcedure = protectedProcedure
     if (updateData.description !== undefined) updatePayload.description = updateData.description;
     if (updateData.price !== undefined) updatePayload.price = updateData.price;
     if (updateData.priceType !== undefined) updatePayload.priceType = updateData.priceType;
-    if (updateData.location !== undefined) updatePayload.location = JSON.stringify(updateData.location);
+    if (updateData.location !== undefined) {
+      updatePayload.address = updateData.location.address;
+      updatePayload.city = updateData.location.city;
+      updatePayload.state = updateData.location.province;
+      updatePayload.country = updateData.location.country;
+      if (updateData.location.coordinates) {
+        updatePayload.latitude = updateData.location.coordinates.latitude.toString();
+        updatePayload.longitude = updateData.location.coordinates.longitude.toString();
+      }
+    }
     if (updateData.images !== undefined) updatePayload.images = JSON.stringify(updateData.images);
     if (updateData.bedrooms !== undefined) updatePayload.bedrooms = updateData.bedrooms;
     if (updateData.bathrooms !== undefined) updatePayload.bathrooms = updateData.bathrooms;
@@ -81,17 +90,7 @@ export const updatePropertyProcedure = protectedProcedure
     if (updateData.listingCategory !== undefined) updatePayload.listingCategory = updateData.listingCategory;
     if (updateData.status !== undefined) updatePayload.status = updateData.status;
     if (updateData.amenities !== undefined) updatePayload.amenities = JSON.stringify(updateData.amenities);
-    if (updateData.features !== undefined) updatePayload.features = JSON.stringify(updateData.features);
-    if (updateData.tourLink !== undefined) updatePayload.tourLink = updateData.tourLink;
-    if (updateData.lister !== undefined) updatePayload.lister = JSON.stringify(updateData.lister);
-    if (updateData.floors !== undefined) updatePayload.floors = updateData.floors;
-    if (updateData.parkingSpaces !== undefined) updatePayload.parkingSpaces = updateData.parkingSpaces;
-    if (updateData.titleDeeds !== undefined) updatePayload.titleDeeds = updateData.titleDeeds ? 1 : 0;
-    if (updateData.serviced !== undefined) updatePayload.serviced = updateData.serviced ? 1 : 0;
-    if (updateData.developerSession !== undefined) updatePayload.developerSession = updateData.developerSession;
-    if (updateData.furnished !== undefined) updatePayload.furnished = updateData.furnished ? 1 : 0;
-    if (updateData.yearBuilt !== undefined) updatePayload.yearBuilt = updateData.yearBuilt;
-    if (updateData.zoning !== undefined) updatePayload.zoning = updateData.zoning;
+    if (updateData.furnished !== undefined) updatePayload.furnished = updateData.furnished;
 
     await ctx.db
       .update(properties)
@@ -110,17 +109,23 @@ export const updatePropertyProcedure = protectedProcedure
       success: true,
       property: {
         ...updatedProperty,
-        location: JSON.parse(updatedProperty.location),
+        location: {
+          address: updatedProperty.address,
+          city: updatedProperty.city,
+          province: updatedProperty.state || '',
+          country: updatedProperty.country,
+          coordinates: updatedProperty.latitude && updatedProperty.longitude ? {
+            latitude: parseFloat(updatedProperty.latitude),
+            longitude: parseFloat(updatedProperty.longitude),
+          } : undefined,
+        },
         images: JSON.parse(updatedProperty.images),
         amenities: updatedProperty.amenities ? JSON.parse(updatedProperty.amenities) : [],
-        features: updatedProperty.features ? JSON.parse(updatedProperty.features) : [],
-        lister: updatedProperty.lister ? JSON.parse(updatedProperty.lister) : null,
-        verified: Boolean(updatedProperty.verified),
+        features: updateData.features ?? [],
+        lister: updateData.lister ?? null,
         featured: Boolean(updatedProperty.featured),
-        titleDeeds: updatedProperty.titleDeeds !== null ? Boolean(updatedProperty.titleDeeds) : undefined,
-        serviced: updatedProperty.serviced !== null ? Boolean(updatedProperty.serviced) : undefined,
         furnished: updatedProperty.furnished !== null ? Boolean(updatedProperty.furnished) : undefined,
-        flagged: Boolean(updatedProperty.flagged),
+        parking: updatedProperty.parking !== null ? Boolean(updatedProperty.parking) : undefined,
       },
     };
   });

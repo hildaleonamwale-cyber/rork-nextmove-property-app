@@ -49,11 +49,13 @@ export const listPropertiesProcedure = publicProcedure
     }
 
     if (input.location) {
-      conditions.push(like(properties.location, `%${input.location}%`));
-    }
-
-    if (input.verifiedOnly) {
-      conditions.push(eq(properties.verified, true));
+      conditions.push(
+        or(
+          like(properties.city, `%${input.location}%`),
+          like(properties.address, `%${input.location}%`),
+          like(properties.country, `%${input.location}%`)
+        )!
+      );
     }
 
     if (input.featured !== undefined) {
@@ -64,7 +66,7 @@ export const listPropertiesProcedure = publicProcedure
       conditions.push(eq(properties.agentId, input.agentId));
     }
 
-    conditions.push(eq(properties.flagged, false));
+
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
@@ -83,17 +85,23 @@ export const listPropertiesProcedure = publicProcedure
     return {
       properties: results.map((property) => ({
         ...property,
-        location: JSON.parse(property.location),
+        location: {
+          address: property.address,
+          city: property.city,
+          province: property.state || '',
+          country: property.country,
+          coordinates: property.latitude && property.longitude ? {
+            latitude: parseFloat(property.latitude),
+            longitude: parseFloat(property.longitude),
+          } : undefined,
+        },
         images: JSON.parse(property.images),
         amenities: property.amenities ? JSON.parse(property.amenities) : [],
-        features: property.features ? JSON.parse(property.features) : [],
-        lister: property.lister ? JSON.parse(property.lister) : null,
-        verified: Boolean(property.verified),
+        features: [],
+        lister: null,
         featured: Boolean(property.featured),
-        titleDeeds: property.titleDeeds !== null ? Boolean(property.titleDeeds) : undefined,
-        serviced: property.serviced !== null ? Boolean(property.serviced) : undefined,
         furnished: property.furnished !== null ? Boolean(property.furnished) : undefined,
-        flagged: Boolean(property.flagged),
+        parking: property.parking !== null ? Boolean(property.parking) : undefined,
       })),
       total: Number(total[0]?.count || 0),
       limit: input.limit,

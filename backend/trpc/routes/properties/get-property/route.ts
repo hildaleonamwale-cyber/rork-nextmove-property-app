@@ -16,16 +16,22 @@ export const getPropertyProcedure = publicProcedure
 
     return {
       ...property,
-      location: JSON.parse(property.location),
+      location: {
+        address: property.address,
+        city: property.city,
+        province: property.state || '',
+        country: property.country,
+        coordinates: property.latitude && property.longitude ? {
+          latitude: parseFloat(property.latitude),
+          longitude: parseFloat(property.longitude),
+        } : undefined,
+      },
       images: JSON.parse(property.images),
       amenities: property.amenities ? JSON.parse(property.amenities) : [],
-      features: property.features ? JSON.parse(property.features) : [],
-      lister: property.lister ? JSON.parse(property.lister) : null,
-      verified: Boolean(property.verified),
+      features: [],
+      lister: null,
       featured: Boolean(property.featured),
-      titleDeeds: property.titleDeeds !== null ? Boolean(property.titleDeeds) : undefined,
-      serviced: property.serviced !== null ? Boolean(property.serviced) : undefined,
       furnished: property.furnished !== null ? Boolean(property.furnished) : undefined,
-      flagged: Boolean(property.flagged),
+      parking: property.parking !== null ? Boolean(property.parking) : undefined,
     };
   });

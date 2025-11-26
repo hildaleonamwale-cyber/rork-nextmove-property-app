@@ -18,9 +18,8 @@ export const getConversationProcedure = protectedProcedure
         senderId: messages.senderId,
         receiverId: messages.receiverId,
         content: messages.content,
-        images: messages.images,
         read: messages.read,
-        timestamp: messages.timestamp,
+        createdAt: messages.createdAt,
         senderName: users.name,
         senderAvatar: users.avatar,
       })
@@ -38,7 +37,7 @@ export const getConversationProcedure = protectedProcedure
           )
         )
       )
-      .orderBy(desc(messages.timestamp))
+      .orderBy(desc(messages.createdAt))
       .limit(input.limit);
 
     await db
@@ -52,10 +51,7 @@ export const getConversationProcedure = protectedProcedure
         )
       );
 
-    const formattedMessages = conversation.map((msg) => ({
-      ...msg,
-      images: msg.images ? JSON.parse(msg.images) : [],
-    })).reverse();
+    const formattedMessages = conversation.reverse();
 
     console.log(`[Get Conversation] User: ${ctx.user.id}, Other: ${input.otherUserId}, Count: ${formattedMessages.length}`);
 

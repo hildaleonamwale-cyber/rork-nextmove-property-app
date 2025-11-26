@@ -3,7 +3,7 @@ import { protectedProcedure } from "../../../create-context";
 import { db } from "../../../../db";
 import { wishlists } from "../../../../db/schema";
 import { eq, and } from "drizzle-orm";
-import { nanoid } from "nanoid";
+
 
 export const addToWishlistProcedure = protectedProcedure
   .input(
@@ -30,7 +30,6 @@ export const addToWishlistProcedure = protectedProcedure
     }
 
     const wishlist = {
-      id: nanoid(),
       userId: ctx.user.id,
       propertyId: input.propertyId,
       createdAt: new Date(),

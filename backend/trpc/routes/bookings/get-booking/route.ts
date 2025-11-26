@@ -41,7 +41,7 @@ export const getBookingProcedure = protectedProcedure
       booking: {
         ...booking,
         propertyImage: images[0] || "",
-        date: booking.date.toISOString().split('T')[0],
+        date: booking.date,
       },
     };
   });

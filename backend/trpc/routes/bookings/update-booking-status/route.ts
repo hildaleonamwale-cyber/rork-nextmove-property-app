@@ -22,7 +22,7 @@ export const updateBookingStatusProcedure = protectedProcedure
       throw new Error("Booking not found");
     }
 
-    if (booking.agentId !== ctx.user.id && booking.clientId !== ctx.user.id) {
+    if (booking.agentId !== ctx.user.id && booking.userId !== ctx.user.id) {
       throw new Error("Unauthorized to update this booking");
     }
 
@@ -30,7 +30,6 @@ export const updateBookingStatusProcedure = protectedProcedure
       .update(bookings)
       .set({
         status: input.status,
-        updatedAt: new Date(),
       })
       .where(eq(bookings.id, input.bookingId))
       .returning();
