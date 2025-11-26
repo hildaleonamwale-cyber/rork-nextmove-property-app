@@ -62,10 +62,10 @@ export const listUsersProcedure = adminProcedure
         const [bookingsCount] = await db
           .select({ count: count() })
           .from(bookings)
-          .where(eq(bookings.clientId, user.id));
+          .where(eq(bookings.userId, user.id));
 
         const [agentProfile] = await db
-          .select({ package: agentProfiles.package })
+          .select({ packageLevel: agentProfiles.packageLevel })
           .from(agentProfiles)
           .where(eq(agentProfiles.userId, user.id))
           .limit(1);
@@ -74,7 +74,7 @@ export const listUsersProcedure = adminProcedure
           ...user,
           propertiesCount: propertiesCount?.count || 0,
           bookingsCount: bookingsCount?.count || 0,
-          accountTier: agentProfile?.package || "free",
+          accountTier: agentProfile?.packageLevel || "free",
         };
       })
     );

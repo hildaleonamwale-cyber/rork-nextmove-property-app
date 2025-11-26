@@ -31,27 +31,33 @@ export const signupProcedure = publicProcedure
     const userId = crypto.randomUUID();
     const [newUser] = await ctx.db
       .insert(users)
-      .values({
-        id: userId,
-        email: input.email,
-        password: hashedPassword,
-        name: input.name,
-        phone: input.phone,
-        role: "client",
-        verified: false,
-        blocked: false,
-      })
+      .values([
+        {
+          id: userId,
+          email: input.email,
+          passwordHash: hashedPassword,
+          name: input.name,
+          phone: input.phone,
+          role: "client",
+          verified: false,
+          blocked: false,
+        },
+      ])
       .returning();
 
     const token = generateToken();
     const expiresAt = generateTokenExpiry(24 * 7);
 
-    await ctx.db.insert(sessions).values({
-      id: crypto.randomUUID(),
-      userId: newUser.id,
-      token,
-      expiresAt,
-    });
+    await ctx.db.insert(sessions).values([
+      {
+        id: crypto.randomUUID(),
+        userId: newUser.id,
+        token,
+        refreshToken: generateToken(),
+        expiresAt,
+        refreshExpiresAt: generateTokenExpiry(24 * 30),
+      },
+    ]);
 
     return {
       user: {

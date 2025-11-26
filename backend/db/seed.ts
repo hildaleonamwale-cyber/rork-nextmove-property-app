@@ -18,7 +18,7 @@ export async function seed() {
     {
       id: adminId,
       email: "admin@nextmove.com",
-      password: hashPassword("admin123"),
+      passwordHash: hashPassword("admin123"),
       name: "Super Admin",
       phone: "+1234567890",
       avatar: "https://i.pravatar.cc/150?img=1",
@@ -29,7 +29,7 @@ export async function seed() {
     {
       id: agentId,
       email: "agent@demo.com",
-      password: hashPassword("agent123"),
+      passwordHash: hashPassword("agent123"),
       name: "John Smith",
       phone: "+1234567891",
       avatar: "https://i.pravatar.cc/150?img=12",
@@ -40,7 +40,7 @@ export async function seed() {
     {
       id: agent2Id,
       email: "sarah@premier.com",
-      password: hashPassword("agent123"),
+      passwordHash: hashPassword("agent123"),
       name: "Sarah Williams",
       phone: "+1234567892",
       avatar: "https://i.pravatar.cc/150?img=5",
@@ -51,7 +51,7 @@ export async function seed() {
     {
       id: clientId,
       email: "client@demo.com",
-      password: hashPassword("client123"),
+      passwordHash: hashPassword("client123"),
       name: "Jane Doe",
       phone: "+1234567893",
       avatar: "https://i.pravatar.cc/150?img=8",
@@ -67,7 +67,7 @@ export async function seed() {
     {
       id: randomUUID(),
       userId: agentId,
-      package: "pro",
+      packageLevel: "pro",
       accountSetupComplete: true,
       companyName: "Premier Realty",
       companyLogo: "https://i.pravatar.cc/150?img=50",
@@ -78,7 +78,7 @@ export async function seed() {
         "Luxury Properties",
         "Commercial Real Estate",
       ]),
-      yearsExperience: 10,
+      yearsOfExperience: 10,
       languages: JSON.stringify(["English", "Spanish"]),
       phone: "+1234567891",
       email: "agent@demo.com",
@@ -95,7 +95,7 @@ export async function seed() {
     {
       id: randomUUID(),
       userId: agent2Id,
-      package: "agency",
+      packageLevel: "agency",
       accountSetupComplete: true,
       companyName: "Elite Properties",
       companyLogo: "https://i.pravatar.cc/150?img=51",
@@ -103,7 +103,7 @@ export async function seed() {
         "https://images.unsplash.com/photo-1582407947304-fd86f028f716?w=1200",
       bio: "Specialized in luxury residential and commercial properties",
       specialties: JSON.stringify(["Residential", "Investment Properties"]),
-      yearsExperience: 8,
+      yearsOfExperience: 8,
       languages: JSON.stringify(["English", "French"]),
       phone: "+1234567892",
       email: "sarah@premier.com",
@@ -133,14 +133,12 @@ export async function seed() {
         "Beautiful 2-bedroom apartment in the heart of downtown with stunning city views",
       price: 2500,
       priceType: "monthly",
-      location: JSON.stringify({
-        address: "123 Downtown St",
-        area: "Downtown",
-        city: "New York",
-        province: "NY",
-        country: "USA",
-        coordinates: { latitude: 40.7128, longitude: -74.006 },
-      }),
+      address: "123 Downtown St",
+      city: "New York",
+      state: "NY",
+      country: "USA",
+      latitude: "40.7128",
+      longitude: "-74.006",
       images: JSON.stringify([
         "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800",
         "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800",
@@ -151,7 +149,6 @@ export async function seed() {
       propertyType: "apartment",
       listingCategory: "property",
       status: "For Rent",
-      verified: true,
       featured: true,
       amenities: JSON.stringify([
         "Pool",
@@ -160,10 +157,9 @@ export async function seed() {
         "Security",
         "WiFi",
       ]),
-      tourLink: "https://my.matterport.com/show/?m=example",
       agentId: agentId,
+      userId: agentId,
       views: 245,
-      bookings: 12,
       inquiries: 35,
     },
     {
@@ -172,15 +168,13 @@ export async function seed() {
       description:
         "Stunning 4-bedroom villa with panoramic ocean views and private pool",
       price: 1250000,
-      priceType: "sale",
-      location: JSON.stringify({
-        address: "789 Ocean Drive",
-        area: "Beachfront",
-        city: "Miami",
-        province: "FL",
-        country: "USA",
-        coordinates: { latitude: 25.7617, longitude: -80.1918 },
-      }),
+      priceType: "total",
+      address: "789 Ocean Drive",
+      city: "Miami",
+      state: "FL",
+      country: "USA",
+      latitude: "25.7617",
+      longitude: "-80.1918",
       images: JSON.stringify([
         "https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800",
         "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800",
@@ -191,7 +185,6 @@ export async function seed() {
       propertyType: "villa",
       listingCategory: "property",
       status: "For Sale",
-      verified: true,
       featured: true,
       amenities: JSON.stringify([
         "Pool",
@@ -201,8 +194,8 @@ export async function seed() {
         "Ocean View",
       ]),
       agentId: agent2Id,
+      userId: agent2Id,
       views: 456,
-      bookings: 8,
       inquiries: 42,
     },
     {
@@ -211,14 +204,12 @@ export async function seed() {
       description: "Prime commercial space in business district",
       price: 5000,
       priceType: "monthly",
-      location: JSON.stringify({
-        address: "456 Business Blvd",
-        area: "Business District",
-        city: "New York",
-        province: "NY",
-        country: "USA",
-        coordinates: { latitude: 40.7589, longitude: -73.9851 },
-      }),
+      address: "456 Business Blvd",
+      city: "New York",
+      state: "NY",
+      country: "USA",
+      latitude: "40.7589",
+      longitude: "-73.9851",
       images: JSON.stringify([
         "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800",
       ]),
@@ -228,19 +219,16 @@ export async function seed() {
       propertyType: "office",
       listingCategory: "commercial",
       status: "For Rent",
-      verified: true,
       featured: false,
-      features: JSON.stringify([
+      amenities: JSON.stringify([
         "Conference Room",
         "Reception Area",
         "Parking",
       ]),
       agentId: agentId,
+      userId: agentId,
       views: 123,
-      bookings: 5,
       inquiries: 18,
-      floors: 2,
-      parkingSpaces: 10,
     },
   ]);
 
@@ -265,9 +253,9 @@ export async function seed() {
     {
       id: randomUUID(),
       propertyId: property1Id,
-      clientId: clientId,
+      userId: clientId,
       agentId: agentId,
-      date: new Date("2025-11-25T10:00:00"),
+      date: "2025-11-25",
       time: "10:00 AM",
       clientName: "Jane Doe",
       clientEmail: "client@demo.com",
@@ -282,14 +270,15 @@ export async function seed() {
   await db.insert(schema.banners).values([
     {
       id: randomUUID(),
-      image:
+      imageUrl:
         "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=1200",
       title: "Find Your Dream Home",
       description: "Browse thousands of properties",
+      link: "/search",
       ctaText: "Search Now",
       ctaLink: "/search",
       order: 1,
-      active: true,
+      enabled: true,
     },
   ]);
 

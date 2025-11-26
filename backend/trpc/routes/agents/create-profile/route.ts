@@ -37,21 +37,23 @@ export const createAgentProfileProcedure = protectedProcedure
 
     const profileId = randomUUID();
 
-    await db.insert(agentProfiles).values({
-      id: profileId,
-      userId: ctx.user.id,
-      package: input.package,
-      accountSetupComplete: false,
-      companyName: input.companyName,
-      bio: input.bio,
-      specialties: input.specialties ? JSON.stringify(input.specialties) : null,
-      yearsExperience: input.yearsExperience,
-      languages: input.languages ? JSON.stringify(input.languages) : null,
-      phone: input.phone,
-      email: input.email,
-      website: input.website,
-      address: input.address,
-    });
+    await db.insert(agentProfiles).values([
+      {
+        id: profileId,
+        userId: ctx.user.id,
+        packageLevel: input.package,
+        accountSetupComplete: false,
+        companyName: input.companyName,
+        bio: input.bio,
+        specialties: input.specialties ? JSON.stringify(input.specialties) : null,
+        yearsOfExperience: input.yearsExperience,
+        languages: input.languages ? JSON.stringify(input.languages) : null,
+        phone: input.phone,
+        email: input.email,
+        website: input.website,
+        address: input.address,
+      },
+    ]);
 
     await db
       .update(users)
