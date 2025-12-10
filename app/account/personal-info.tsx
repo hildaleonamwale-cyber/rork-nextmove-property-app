@@ -28,6 +28,7 @@ export default function PersonalInfoScreen() {
   const [phone, setPhone] = useState('');
   const [profileImage, setProfileImage] = useState<string>('');
   const [showSuccess, setShowSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('Successfully Saved');
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
@@ -49,13 +50,16 @@ export default function PersonalInfoScreen() {
     try {
       await updateProfile({ name, phone: phone || undefined });
       setShowSuccess(true);
+      setTimeout(() => {
+        router.back();
+      }, 1500);
     } catch (error) {
       console.error('Error updating profile:', error);
       Alert.alert('Error', 'Failed to update profile. Please try again.');
     } finally {
       setIsSaving(false);
     }
-  }, [name, phone, updateProfile]);
+  }, [name, phone, updateProfile, router]);
 
   const pickImage = async () => {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -84,7 +88,9 @@ export default function PersonalInfoScreen() {
       if (asset.base64) {
         setIsUploadingImage(true);
         try {
-          await uploadAvatar(asset.base64);
+          const avatarUrl = await uploadAvatar(asset.base64);
+          setProfileImage(avatarUrl);
+          setSuccessMessage('Profile picture updated successfully');
           setShowSuccess(true);
         } catch (error) {
           console.error('Error uploading avatar:', error);
@@ -197,7 +203,7 @@ export default function PersonalInfoScreen() {
 
       <SuccessPrompt
         visible={showSuccess}
-        message="Successfully Saved"
+        message={successMessage}
         onClose={() => setShowSuccess(false)}
       />
     </View>

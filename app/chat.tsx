@@ -9,61 +9,41 @@ import {
   KeyboardAvoidingView,
   Platform,
   Modal,
+  ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Send, Image as ImageIcon, Smile } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
 import SuccessPrompt from '@/components/SuccessPrompt';
 import * as ImagePicker from 'expo-image-picker';
-import { useBookings } from '@/contexts/BookingContext';
-import BookingCard from '@/components/BookingCard';
-
-interface Message {
-  id: string;
-  text?: string;
-  sender: 'user' | 'agent';
-  timestamp: Date;
-  type?: 'text' | 'booking';
-  bookingId?: string;
-}
+import { useSupabaseMessages } from '@/hooks/useSupabaseMessages';
+import { useUser } from '@/contexts/UserContext';
 
 export default function ChatScreen() {
   const router = useRouter();
+  const { conversationId } = useLocalSearchParams<{ conversationId: string }>();
   const insets = useSafeAreaInsets();
   const scrollViewRef = useRef<ScrollView>(null);
-  const { bookings, updateBookingStatus } = useBookings();
+  const { user } = useUser();
+  
+  const { messages: messagesData, isLoading, sendMessage: sendMsg, markAsRead } = useSupabaseMessages(conversationId || '');
   
   const [message, setMessage] = useState('');
-
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
-
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
-
-  useEffect(() => {
-    if (bookings.length > 0) {
-      const latestBooking = bookings[bookings.length - 1];
-      const existingBookingMessage = messages.find(m => m.bookingId === latestBooking.id);
-      
-      if (!existingBookingMessage) {
-        const bookingMessage: Message = {
-          id: `booking-${latestBooking.id}`,
-          sender: 'user',
-          timestamp: new Date(),
-          type: 'booking',
-          bookingId: latestBooking.id,
-        };
-        setMessages(prev => [...prev, bookingMessage]);
-        console.log('Booking message added to chat:', bookingMessage);
-      }
-    }
-  }, [bookings]);
+  const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {
     scrollViewRef.current?.scrollToEnd({ animated: true });
-  }, [messages]);
+  }, [messagesData]);
+
+  useEffect(() => {
+    if (conversationId && user) {
+      markAsRead();
+    }
+  }, [conversationId, user, markAsRead]);
 
   const handleAttachment = useCallback(async () => {
     console.log('Opening attachment picker');
@@ -87,41 +67,36 @@ export default function ChatScreen() {
     setShowEmojiPicker(false);
   }, []);
 
-
-
-
-
-
-
-  const handleSend = () => {
-    if (message.trim()) {
-      const newMessage: Message = {
-        id: Date.now().toString(),
-        text: message.trim(),
-        sender: 'user',
-        timestamp: new Date(),
-        type: 'text',
-      };
-      setMessages([...messages, newMessage]);
-      setMessage('');
+  const handleSend = async () => {
+    if (message.trim() && conversationId && !isSending) {
+      setIsSending(true);
+      try {
+        await sendMsg(message.trim());
+        setMessage('');
+      } catch (error) {
+        console.error('Failed to send message:', error);
+        setSuccessMessage('Failed to send message');
+        setShowSuccess(true);
+      } finally {
+        setIsSending(false);
+      }
     }
   };
-
-  const handleBookingStatusChange = useCallback((bookingId: string, newStatus: 'pending' | 'confirmed' | 'cancelled') => {
-    updateBookingStatus(bookingId, newStatus);
-    const statusMessages = {
-      confirmed: 'Booking Confirmed Successfully',
-      cancelled: 'Booking Canceled Successfully',
-    };
-    if (newStatus !== 'pending') {
-      setSuccessMessage(statusMessages[newStatus]);
-      setShowSuccess(true);
-    }
-  }, [updateBookingStatus]);
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   };
+
+  if (!conversationId) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <Text style={styles.errorText}>No conversation selected</Text>
+        <TouchableOpacity style={styles.backButtonError} onPress={() => router.back()}>
+          <Text style={styles.backButtonErrorText}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -136,107 +111,94 @@ export default function ChatScreen() {
           </TouchableOpacity>
           
           <View style={styles.headerInfo}>
-            <Text style={styles.headerTitle}>Property Agent</Text>
-            <Text style={styles.headerSubtitle}>Online</Text>
+            <Text style={styles.headerTitle}>Conversation</Text>
+            <Text style={styles.headerSubtitle}>Chat</Text>
           </View>
-
-
         </View>
-        
-
       </View>
-      
-
-
-
 
       <View style={styles.contentWrapper}>
-        <ScrollView
-          ref={scrollViewRef}
-          style={styles.messagesContainer}
-          contentContainerStyle={styles.messagesContent}
-          showsVerticalScrollIndicator={false}
-        >
-        {messages.map((msg) => {
-          if (msg.type === 'booking' && msg.bookingId) {
-            const booking = bookings.find(b => b.id === msg.bookingId);
-            if (!booking) return null;
-            return (
-              <View key={msg.id} style={styles.bookingMessageWrapper}>
-                <BookingCard 
-                  booking={booking} 
-                  onStatusChange={handleBookingStatusChange}
-                />
-              </View>
-            );
-          }
-
-          return (
-            <View
-              key={msg.id}
-              style={[
-                styles.messageWrapper,
-                msg.sender === 'user' ? styles.userMessageWrapper : styles.agentMessageWrapper,
-              ]}
-            >
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+          </View>
+        ) : (
+          <ScrollView
+            ref={scrollViewRef}
+            style={styles.messagesContainer}
+            contentContainerStyle={styles.messagesContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {messagesData.map((msg) => (
               <View
+                key={msg.id}
                 style={[
-                  styles.messageBubble,
-                  msg.sender === 'user' ? styles.userMessage : styles.agentMessage,
+                  styles.messageWrapper,
+                  msg.senderId === user?.id ? styles.userMessageWrapper : styles.agentMessageWrapper,
                 ]}
               >
-                <Text
+                <View
                   style={[
-                    styles.messageText,
-                    msg.sender === 'user' ? styles.userMessageText : styles.agentMessageText,
+                    styles.messageBubble,
+                    msg.senderId === user?.id ? styles.userMessage : styles.agentMessage,
                   ]}
                 >
-                  {msg.text}
-                </Text>
-                <Text
-                  style={[
-                    styles.messageTime,
-                    msg.sender === 'user' ? styles.userMessageTime : styles.agentMessageTime,
-                  ]}
-                >
-                  {formatTime(msg.timestamp)}
-                </Text>
+                  <Text
+                    style={[
+                      styles.messageText,
+                      msg.senderId === user?.id ? styles.userMessageText : styles.agentMessageText,
+                    ]}
+                  >
+                    {msg.content}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.messageTime,
+                      msg.senderId === user?.id ? styles.userMessageTime : styles.agentMessageTime,
+                    ]}
+                  >
+                    {formatTime(msg.createdAt)}
+                  </Text>
+                </View>
               </View>
-            </View>
-          );
-        })}
-          <View style={{ height: 20 }} />
-        </ScrollView>
+            ))}
+            <View style={{ height: 20 }} />
+          </ScrollView>
+        )}
 
         <View style={[styles.inputContainer, { paddingBottom: Platform.OS === 'web' ? 20 : insets.bottom + 20 }]}>
-        <View style={styles.inputRow}>
-          <TouchableOpacity style={styles.iconButton} onPress={handleAttachment}>
-            <ImageIcon size={22} color={Colors.primary} />
-          </TouchableOpacity>
-          
-          <View style={styles.inputWrapper}>
-            <TextInput
-              style={styles.input}
-              placeholder="Type a message..."
-              placeholderTextColor={Colors.text.light}
-              value={message}
-              onChangeText={setMessage}
-              multiline
-              maxLength={500}
-            />
-            <TouchableOpacity style={styles.emojiButtonInInput} onPress={handleEmoji}>
-              <Smile size={20} color={Colors.text.light} />
+          <View style={styles.inputRow}>
+            <TouchableOpacity style={styles.iconButton} onPress={handleAttachment}>
+              <ImageIcon size={22} color={Colors.primary} />
+            </TouchableOpacity>
+            
+            <View style={styles.inputWrapper}>
+              <TextInput
+                style={styles.input}
+                placeholder="Type a message..."
+                placeholderTextColor={Colors.text.light}
+                value={message}
+                onChangeText={setMessage}
+                multiline
+                maxLength={500}
+              />
+              <TouchableOpacity style={styles.emojiButtonInInput} onPress={handleEmoji}>
+                <Smile size={20} color={Colors.text.light} />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.sendButton, (!message.trim() || isSending) && styles.sendButtonDisabled]}
+              onPress={handleSend}
+              disabled={!message.trim() || isSending}
+            >
+              {isSending ? (
+                <ActivityIndicator size="small" color={Colors.white} />
+              ) : (
+                <Send size={20} color={Colors.white} />
+              )}
             </TouchableOpacity>
           </View>
-
-          <TouchableOpacity
-            style={[styles.sendButton, !message.trim() && styles.sendButtonDisabled]}
-            onPress={handleSend}
-            disabled={!message.trim()}
-          >
-            <Send size={20} color={Colors.white} />
-          </TouchableOpacity>
-        </View>
         </View>
       </View>
 
@@ -284,6 +246,26 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.white,
   },
+  centered: {
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+  },
+  errorText: {
+    fontSize: 16,
+    color: Colors.text.secondary,
+    marginBottom: 16,
+  },
+  backButtonError: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    backgroundColor: Colors.primary,
+    borderRadius: 8,
+  },
+  backButtonErrorText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.white,
+  },
   header: {
     backgroundColor: Colors.white,
     shadowColor: Colors.black,
@@ -318,12 +300,16 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 13,
-    color: Colors.success,
+    color: Colors.text.secondary,
     marginTop: 2,
   },
-
   contentWrapper: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
   },
   messagesContainer: {
     flex: 1,
@@ -448,11 +434,6 @@ const styles = StyleSheet.create({
   sendButtonDisabled: {
     opacity: 0.5,
   },
-  bookingMessageWrapper: {
-    width: '100%' as const,
-    marginBottom: 16,
-  },
-
   emojiPickerOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',

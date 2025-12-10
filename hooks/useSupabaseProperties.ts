@@ -70,11 +70,11 @@ export function useSupabaseProperties(filters?: PropertyFilters) {
       }
 
       if (filters?.location) {
-        query = query.or(`city.ilike.%${filters.location}%,state.ilike.%${filters.location}%,address.ilike.%${filters.location}%`);
+        query = query.or(`city.ilike.%${filters.location}%,state.ilike.%${filters.location}%,address.ilike.%${filters.location}%,title.ilike.%${filters.location}%,property_type.ilike.%${filters.location}%`);
       }
 
       if (filters?.propertyType) {
-        query = query.eq('property_type', filters.propertyType);
+        query = query.ilike('property_type', `%${filters.propertyType}%`);
       }
 
       if (filters?.listingCategory) {
