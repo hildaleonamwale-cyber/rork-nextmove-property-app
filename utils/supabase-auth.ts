@@ -145,40 +145,78 @@ export async function signup(params: SignupParams): Promise<{ user: SupabaseUser
 export async function login(params: LoginParams): Promise<{ user: SupabaseUser }> {
   const { email, password } = params;
 
-  const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+  console.log('[Auth] Starting login for:', email);
+
+  const authPromise = supabase.auth.signInWithPassword({
     email,
     password,
   });
 
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error('Login timeout - please check your internet connection')), 15000);
+  });
+
+  const { data: authData, error: authError } = await Promise.race([
+    authPromise,
+    timeoutPromise,
+  ]) as Awaited<ReturnType<typeof supabase.auth.signInWithPassword>>;
+
   if (authError) {
-    console.error('Supabase login error:', authError);
+    console.error('[Auth] Login error:', authError);
     throw new Error(authError.message);
   }
 
   if (!authData.user) {
+    console.error('[Auth] No user in response');
     throw new Error('No user returned from login');
   }
 
-  const { data: profile, error: profileError } = await supabase
+  console.log('[Auth] User authenticated, fetching profile...');
+
+  const profilePromise = supabase
     .from('users')
     .select('*')
     .eq('id', authData.user.id)
     .single();
 
+  const profileTimeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error('Profile fetch timeout')), 10000);
+  });
+
+  const result = await Promise.race([
+    profilePromise,
+    profileTimeoutPromise,
+  ]);
+
+  const { data: profile, error: profileError } = result as { data: any; error: any };
+
   if (profileError) {
-    console.error('Profile fetch error:', profileError);
+    console.error('[Auth] Profile fetch error:', profileError);
     throw new Error('Failed to fetch user profile');
   }
 
+  if (!profile) {
+    console.error('[Auth] No profile found');
+    throw new Error('User profile not found');
+  }
+
   if (profile.blocked) {
+    console.log('[Auth] User is blocked, signing out');
     await supabase.auth.signOut();
     throw new Error('Your account has been blocked');
   }
 
-  await supabase
-    .from('users')
-    .update({ last_active: new Date().toISOString() })
-    .eq('id', authData.user.id);
+  console.log('[Auth] Updating last active timestamp...');
+  
+  try {
+    await supabase
+      .from('users')
+      .update({ last_active: new Date().toISOString() })
+      .eq('id', authData.user.id);
+    console.log('[Auth] Last active updated');
+  } catch (err: any) {
+    console.error('[Auth] Failed to update last active:', err);
+  }
 
   const user: SupabaseUser = {
     id: profile.id,
@@ -193,8 +231,10 @@ export async function login(params: LoginParams): Promise<{ user: SupabaseUser }
     lastActive: new Date(),
   };
 
+  console.log('[Auth] Caching user profile...');
   await AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(user));
 
+  console.log('[Auth] Login completed successfully');
   return { user };
 }
 

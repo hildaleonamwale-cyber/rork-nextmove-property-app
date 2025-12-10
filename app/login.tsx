@@ -19,7 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import Colors from '@/constants/colors';
 import { useSuperAdmin } from '@/contexts/SuperAdminContext';
-import { supabase } from '@/lib/supabase';
+import { login as loginAuth } from '@/utils/supabase-auth';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -38,57 +38,24 @@ export default function LoginScreen() {
       return;
     }
 
-    try {
-      setIsLoading(true);
-      console.log('Attempting Supabase login with:', { email, loginMode });
+    setIsLoading(true);
 
-      const { data, error } = await supabase.auth.signInWithPassword({
+    try {
+      console.log('Starting login process...');
+      
+      const { user } = await loginAuth({
         email: email.trim(),
         password,
       });
 
-      if (error) {
-        console.error('Supabase auth error:', error);
-        throw new Error(error.message);
-      }
-
-      if (!data.user) {
-        console.error('No user returned from Supabase');
-        throw new Error('Login failed: No user data received');
-      }
-
-      console.log('Supabase login successful!');
-      console.log('User ID:', data.user.id);
-      console.log('User email:', data.user.email);
-      console.log('Session:', data.session ? 'Active' : 'None');
-
-      console.log('Fetching user profile...');
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', data.user.id)
-        .single();
-
-      if (userError) {
-        console.error('Error fetching user profile:', userError);
-        throw new Error('Failed to load user profile');
-      }
-
-      if (!userData) {
-        console.error('No user data found');
-        throw new Error('User profile not found');
-      }
-
-      console.log('User profile:', userData);
-      await AsyncStorage.setItem('@user_mode', userData.role === 'admin' ? 'admin' : 'client');
-
-      console.log('Login successful, auth state change will trigger user context update...');
+      console.log('Login successful:', user);
+      await AsyncStorage.setItem('@user_mode', user.role === 'admin' ? 'admin' : 'client');
       
-      if (loginMode === 'admin' || userData.role === 'admin') {
+      if (loginMode === 'admin' || user.role === 'admin') {
         await enableSuperAdmin();
         console.log('Navigating to admin dashboard');
         router.replace('/admin/dashboard' as any);
-      } else if (userData.role === 'agent' || userData.role === 'agency') {
+      } else if (user.role === 'agent' || user.role === 'agency') {
         console.log('Navigating to agent dashboard');
         router.replace('/agent/dashboard' as any);
       } else {
@@ -97,7 +64,6 @@ export default function LoginScreen() {
       }
     } catch (error: any) {
       console.error('Login error:', error);
-      console.error('Error details:', error.message || JSON.stringify(error));
       Alert.alert('Login Failed', error.message || 'Invalid email or password');
     } finally {
       setIsLoading(false);
