@@ -10,6 +10,22 @@ export const [UserProvider, useUser] = createContextHook(() => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const loadUser = useCallback(async (skipCache: boolean = false) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const currentUser = await getCurrentUser(skipCache);
+      setUser(currentUser);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Error loading user:', errorMessage);
+      setError(errorMessage);
+      setUser(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadUser();
 
@@ -29,23 +45,7 @@ export const [UserProvider, useUser] = createContextHook(() => {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
-
-  const loadUser = async (skipCache: boolean = false) => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const currentUser = await getCurrentUser(skipCache);
-      setUser(currentUser);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error('Error loading user:', errorMessage);
-      setError(errorMessage);
-      setUser(null);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [loadUser]);
 
   const updateProfile = useCallback(
     async (updates: { name?: string; phone?: string }) => {
@@ -85,7 +85,7 @@ export const [UserProvider, useUser] = createContextHook(() => {
 
   const refetch = useCallback((skipCache: boolean = true) => {
     return loadUser(skipCache);
-  }, []);
+  }, [loadUser]);
 
   const isClient = user?.role === "client";
   const isAgent =
