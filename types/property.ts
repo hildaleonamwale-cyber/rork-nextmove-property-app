@@ -8,11 +8,11 @@ export interface Property {
   priceType: 'monthly' | 'sale';
   location: {
     address: string;
-    area: string;
+    area?: string;
     city: string;
-    province: string;
+    province?: string;
     country: string;
-    coordinates: {
+    coordinates?: {
       latitude: number;
       longitude: number;
     };
@@ -48,11 +48,11 @@ export interface Stand {
   priceType: 'sale';
   location: {
     address: string;
-    area: string;
+    area?: string;
     city: string;
-    province: string;
+    province?: string;
     country: string;
-    coordinates: {
+    coordinates?: {
       latitude: number;
       longitude: number;
     };
@@ -88,11 +88,11 @@ export interface CommercialProperty {
   priceType: 'monthly' | 'sale';
   location: {
     address: string;
-    area: string;
+    area?: string;
     city: string;
-    province: string;
+    province?: string;
     country: string;
-    coordinates: {
+    coordinates?: {
       latitude: number;
       longitude: number;
     };

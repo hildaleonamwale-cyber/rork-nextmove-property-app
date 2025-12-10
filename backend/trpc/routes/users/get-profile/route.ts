@@ -21,7 +21,6 @@ export const getProfileProcedure = protectedProcedure
         verified: users.verified,
         blocked: users.blocked,
         createdAt: users.createdAt,
-        lastActive: users.lastActive,
       })
       .from(users)
       .where(eq(users.id, targetUserId))

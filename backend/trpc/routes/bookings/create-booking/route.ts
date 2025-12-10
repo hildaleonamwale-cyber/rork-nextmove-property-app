@@ -2,7 +2,7 @@ import { z } from "zod";
 import { protectedProcedure } from "../../../create-context";
 import { db } from "../../../../db";
 import { bookings, properties } from "../../../../db/schema";
-import { nanoid } from "nanoid";
+
 import { eq } from "drizzle-orm";
 
 const createBookingSchema = z.object({
@@ -28,37 +28,30 @@ export const createBookingProcedure = protectedProcedure
       throw new Error("Property not found");
     }
 
-    const bookingId = nanoid();
-    const bookingDate = new Date(input.date);
-
     const [newBooking] = await db
       .insert(bookings)
       .values({
-        id: bookingId,
         propertyId: input.propertyId,
-        clientId: ctx.user.id,
-        agentId: property[0].agentId,
-        date: bookingDate,
+        userId: ctx.user.id,
+        propertyTitle: property[0].title,
+        date: input.date,
         time: input.time,
         clientName: input.clientName,
         clientEmail: input.clientEmail,
         clientPhone: input.clientPhone,
         notes: input.notes || null,
         status: "pending",
-        createdAt: new Date(),
-        updatedAt: new Date(),
       })
       .returning();
 
     await db
       .update(properties)
       .set({
-        bookings: property[0].bookings + 1,
-        updatedAt: new Date(),
+        inquiries: (property[0].inquiries || 0) + 1,
       })
       .where(eq(properties.id, input.propertyId));
 
-    console.log(`[Booking Created] ID: ${bookingId}, Property: ${input.propertyId}, Client: ${ctx.user.id}`);
+    console.log(`[Booking Created] ID: ${newBooking.id}, Property: ${input.propertyId}, Client: ${ctx.user.id}`);
 
     return {
       success: true,

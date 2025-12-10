@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { protectedProcedure } from "../../../create-context";
 import { db } from "../../../../db";
-import { bookings } from "../../../../db/schema";
+import { bookings, properties } from "../../../../db/schema";
 import { eq } from "drizzle-orm";
 
 const updateBookingStatusSchema = z.object({
@@ -22,7 +22,17 @@ export const updateBookingStatusProcedure = protectedProcedure
       throw new Error("Booking not found");
     }
 
-    if (booking.agentId !== ctx.user.id && booking.clientId !== ctx.user.id) {
+    const property = await db
+      .select()
+      .from(properties)
+      .where(eq(properties.id, booking.propertyId))
+      .limit(1);
+
+    if (!property[0]) {
+      throw new Error("Property not found");
+    }
+
+    if (property[0].agentId !== ctx.user.id && booking.userId !== ctx.user.id) {
       throw new Error("Unauthorized to update this booking");
     }
 
@@ -30,7 +40,6 @@ export const updateBookingStatusProcedure = protectedProcedure
       .update(bookings)
       .set({
         status: input.status,
-        updatedAt: new Date(),
       })
       .where(eq(bookings.id, input.bookingId))
       .returning();

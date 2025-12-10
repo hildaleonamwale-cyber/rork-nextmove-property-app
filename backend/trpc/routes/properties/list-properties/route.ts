@@ -49,11 +49,14 @@ export const listPropertiesProcedure = publicProcedure
     }
 
     if (input.location) {
-      conditions.push(like(properties.location, `%${input.location}%`));
-    }
-
-    if (input.verifiedOnly) {
-      conditions.push(eq(properties.verified, true));
+      const locationQuery = `%${input.location}%`;
+      conditions.push(
+        or(
+          like(properties.city, locationQuery),
+          like(properties.state, locationQuery),
+          like(properties.address, locationQuery)
+        )
+      );
     }
 
     if (input.featured !== undefined) {
@@ -63,8 +66,6 @@ export const listPropertiesProcedure = publicProcedure
     if (input.agentId) {
       conditions.push(eq(properties.agentId, input.agentId));
     }
-
-    conditions.push(eq(properties.flagged, false));
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
@@ -83,17 +84,8 @@ export const listPropertiesProcedure = publicProcedure
     return {
       properties: results.map((property) => ({
         ...property,
-        location: JSON.parse(property.location),
         images: JSON.parse(property.images),
         amenities: property.amenities ? JSON.parse(property.amenities) : [],
-        features: property.features ? JSON.parse(property.features) : [],
-        lister: property.lister ? JSON.parse(property.lister) : null,
-        verified: Boolean(property.verified),
-        featured: Boolean(property.featured),
-        titleDeeds: property.titleDeeds !== null ? Boolean(property.titleDeeds) : undefined,
-        serviced: property.serviced !== null ? Boolean(property.serviced) : undefined,
-        furnished: property.furnished !== null ? Boolean(property.furnished) : undefined,
-        flagged: Boolean(property.flagged),
       })),
       total: Number(total[0]?.count || 0),
       limit: input.limit,

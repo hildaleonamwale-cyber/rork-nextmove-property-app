@@ -27,13 +27,9 @@ export const listWishlistProcedure = protectedProcedure
         addedAt: item.addedAt,
         property: {
           ...item.property,
-          location: JSON.parse(item.property.location),
           images: JSON.parse(item.property.images),
           amenities: item.property.amenities
             ? JSON.parse(item.property.amenities)
-            : [],
-          features: item.property.features
-            ? JSON.parse(item.property.features)
             : [],
         },
       };
