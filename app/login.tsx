@@ -64,6 +64,7 @@ export default function LoginScreen() {
       console.log('User email:', data.user.email);
       console.log('Session:', data.session ? 'Active' : 'None');
 
+      console.log('Fetching user profile...');
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('*')
@@ -72,23 +73,35 @@ export default function LoginScreen() {
 
       if (userError) {
         console.error('Error fetching user profile:', userError);
-      } else {
-        console.log('User profile:', userData);
-        await AsyncStorage.setItem('@user_mode', userData.role === 'admin' ? 'admin' : 'client');
+        throw new Error('Failed to load user profile');
       }
 
-      await refetch();
+      if (!userData) {
+        console.error('No user data found');
+        throw new Error('User profile not found');
+      }
+
+      console.log('User profile:', userData);
+      await AsyncStorage.setItem('@user_mode', userData.role === 'admin' ? 'admin' : 'client');
+
+      console.log('Refetching user context...');
+      await Promise.race([
+        refetch(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Context refetch timeout')), 5000)
+        )
+      ]);
+      console.log('User context refetched');
       
-      if (userData) {
-        if (loginMode === 'admin' || userData.role === 'admin') {
-          await enableSuperAdmin();
-          router.replace('/admin/dashboard' as any);
-        } else if (userData.role === 'agent' || userData.role === 'agency') {
-          router.replace('/agent/dashboard' as any);
-        } else {
-          router.replace('/(tabs)/home' as any);
-        }
+      if (loginMode === 'admin' || userData.role === 'admin') {
+        await enableSuperAdmin();
+        console.log('Navigating to admin dashboard');
+        router.replace('/admin/dashboard' as any);
+      } else if (userData.role === 'agent' || userData.role === 'agency') {
+        console.log('Navigating to agent dashboard');
+        router.replace('/agent/dashboard' as any);
       } else {
+        console.log('Navigating to home');
         router.replace('/(tabs)/home' as any);
       }
     } catch (error: any) {
