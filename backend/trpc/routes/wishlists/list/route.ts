@@ -27,21 +27,14 @@ export const listWishlistProcedure = protectedProcedure
         addedAt: item.addedAt,
         property: {
           ...item.property,
-          location: {
-            address: item.property.address,
-            city: item.property.city,
-            province: item.property.state || '',
-            country: item.property.country,
-            coordinates: item.property.latitude && item.property.longitude ? {
-              latitude: parseFloat(item.property.latitude),
-              longitude: parseFloat(item.property.longitude),
-            } : undefined,
-          },
+          location: JSON.parse(item.property.location),
           images: JSON.parse(item.property.images),
           amenities: item.property.amenities
             ? JSON.parse(item.property.amenities)
             : [],
-          features: [],
+          features: item.property.features
+            ? JSON.parse(item.property.features)
+            : [],
         },
       };
     }).filter(Boolean);

@@ -12,7 +12,7 @@ export const listConversationsProcedure = protectedProcedure.query(
         receiverId: messages.receiverId,
         content: messages.content,
         read: messages.read,
-        createdAt: messages.createdAt,
+        timestamp: messages.timestamp,
         senderName: users.name,
         senderAvatar: users.avatar,
       })
@@ -21,7 +21,7 @@ export const listConversationsProcedure = protectedProcedure.query(
       .where(
         or(eq(messages.senderId, ctx.user.id), eq(messages.receiverId, ctx.user.id))
       )
-      .orderBy(desc(messages.createdAt));
+      .orderBy(desc(messages.timestamp));
 
     const conversationsMap = new Map<
       string,
@@ -30,7 +30,7 @@ export const listConversationsProcedure = protectedProcedure.query(
         userName: string | null;
         userAvatar: string | null;
         lastMessage: string;
-        createdAt: Date;
+        timestamp: Date;
         unreadCount: number;
       }
     >();
@@ -52,7 +52,7 @@ export const listConversationsProcedure = protectedProcedure.query(
           userName: otherUser?.name || null,
           userAvatar: otherUser?.avatar || null,
           lastMessage: msg.content,
-          createdAt: msg.createdAt,
+          timestamp: msg.timestamp,
           unreadCount: isUnread ? 1 : 0,
         });
       } else {
@@ -64,7 +64,7 @@ export const listConversationsProcedure = protectedProcedure.query(
     }
 
     const conversations = Array.from(conversationsMap.values()).sort(
-      (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
+      (a, b) => b.timestamp.getTime() - a.timestamp.getTime()
     );
 
     console.log(`[List Conversations] User: ${ctx.user.id}, Count: ${conversations.length}`);

@@ -28,7 +28,7 @@ export const upgradePackageProcedure = protectedProcedure
     await db
       .update(agentProfiles)
       .set({
-        packageLevel: input.package,
+        package: input.package,
         updatedAt: new Date(),
       })
       .where(eq(agentProfiles.userId, ctx.user.id));

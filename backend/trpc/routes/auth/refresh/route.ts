@@ -42,16 +42,12 @@ export const refreshProcedure = publicProcedure
     const newToken = generateToken();
     const expiresAt = generateTokenExpiry(24 * 7);
 
-    await ctx.db.insert(sessions).values([
-      {
-        id: crypto.randomUUID(),
-        userId: user.id,
-        token: newToken,
-        refreshToken: generateToken(),
-        expiresAt,
-        refreshExpiresAt: generateTokenExpiry(24 * 30),
-      },
-    ]);
+    await ctx.db.insert(sessions).values({
+      id: crypto.randomUUID(),
+      userId: user.id,
+      token: newToken,
+      expiresAt,
+    });
 
     return {
       user: {

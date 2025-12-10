@@ -21,7 +21,7 @@ export const meProcedure = protectedProcedure.query(async ({ ctx }) => {
     blocked: ctx.user.blocked,
     createdAt: ctx.user.createdAt,
     lastActive: ctx.user.lastActive,
-    accountTier: agentProfile[0]?.packageLevel || "free",
+    accountTier: agentProfile[0]?.package || "free",
     hasAgentProfile: agentProfile.length > 0,
   };
 });

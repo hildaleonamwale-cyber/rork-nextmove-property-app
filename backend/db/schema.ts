@@ -27,7 +27,6 @@ export const users = sqliteTable("users", {
     .default("client"),
   verified: integer("verified", { mode: "boolean" }).notNull().default(false),
   blocked: integer("blocked", { mode: "boolean" }).notNull().default(false),
-  lastActive: timestamp("last_active"),
   createdAt: timestamp("created_at").notNull(),
   updatedAt: timestamp("updated_at").notNull(),
 });
@@ -59,11 +58,8 @@ export const agents = sqliteTable(
       .references(() => users.id, { onDelete: "cascade" })
       .unique(),
     companyName: text("company_name"),
-    companyLogo: text("company_logo"),
-    banner: text("banner"),
     bio: text("bio"),
     specialization: text("specialization"),
-    specialties: text("specialties"),
     licenseNumber: text("license_number"),
     yearsOfExperience: integer("years_of_experience"),
     packageLevel: text("package_level", {
@@ -72,23 +68,14 @@ export const agents = sqliteTable(
       .notNull()
       .default("free"),
     packageExpiry: timestamp("package_expiry"),
-    accountSetupComplete: integer("account_setup_complete", { mode: "boolean" }).notNull().default(false),
     areasServed: text("areas_served"),
     website: text("website"),
-    phone: text("phone"),
-    email: text("email"),
-    address: text("address"),
-    languages: text("languages"),
-    socialMedia: text("social_media"),
     facebook: text("facebook"),
     twitter: text("twitter"),
     instagram: text("instagram"),
     linkedin: text("linkedin"),
     rating: integer("rating").default(0),
     reviewCount: integer("review_count").default(0),
-    followers: integer("followers").default(0),
-    following: integer("following").default(0),
-    verified: integer("verified", { mode: "boolean" }).notNull().default(false),
     createdAt: timestamp("created_at").notNull(),
     updatedAt: timestamp("updated_at").notNull(),
   },
@@ -163,9 +150,6 @@ export const bookings = sqliteTable(
     userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    agentId: text("agent_id")
-      .notNull()
-      .references(() => agents.id, { onDelete: "cascade" }),
     propertyTitle: text("property_title"),
     date: text("date").notNull(),
     time: text("time").notNull(),
@@ -183,7 +167,6 @@ export const bookings = sqliteTable(
   (table) => ({
     propertyIdIdx: index("bookings_property_id_idx").on(table.propertyId),
     userIdIdx: index("bookings_user_id_idx").on(table.userId),
-    agentIdIdx: index("bookings_agent_id_idx").on(table.agentId),
     statusIdx: index("bookings_status_idx").on(table.status),
   })
 );
@@ -258,10 +241,7 @@ export const banners = sqliteTable("banners", {
   id: text("id").primaryKey().$defaultFn(() => createId()),
   imageUrl: text("image_url").notNull(),
   title: text("title").notNull(),
-  description: text("description"),
   link: text("link").notNull(),
-  ctaText: text("cta_text"),
-  ctaLink: text("cta_link"),
   enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
   order: integer("order").notNull().default(0),
   createdAt: timestamp("created_at").notNull(),
