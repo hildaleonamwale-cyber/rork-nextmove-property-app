@@ -1,6 +1,6 @@
 import { protectedProcedure } from "@/backend/trpc/create-context";
 import { db } from "@/backend/db";
-import { agentProfiles, users } from "@/backend/db/schema";
+import { agents, users } from "@/backend/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
@@ -24,8 +24,8 @@ export const createAgentProfileProcedure = protectedProcedure
   .mutation(async ({ ctx, input }) => {
     const [existingProfile] = await db
       .select()
-      .from(agentProfiles)
-      .where(eq(agentProfiles.userId, ctx.user.id))
+      .from(agents)
+      .where(eq(agents.userId, ctx.user.id))
       .limit(1);
 
     if (existingProfile) {
@@ -37,20 +37,14 @@ export const createAgentProfileProcedure = protectedProcedure
 
     const profileId = randomUUID();
 
-    await db.insert(agentProfiles).values({
-      id: profileId,
+    await db.insert(agents).values({
       userId: ctx.user.id,
-      package: input.package,
-      accountSetupComplete: false,
+      packageLevel: input.package,
       companyName: input.companyName,
       bio: input.bio,
-      specialties: input.specialties ? JSON.stringify(input.specialties) : null,
-      yearsExperience: input.yearsExperience,
-      languages: input.languages ? JSON.stringify(input.languages) : null,
-      phone: input.phone,
-      email: input.email,
+      specialization: input.specialties ? input.specialties.join(", ") : null,
+      yearsOfExperience: input.yearsExperience,
       website: input.website,
-      address: input.address,
     });
 
     await db

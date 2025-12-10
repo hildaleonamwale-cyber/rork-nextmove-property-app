@@ -48,6 +48,11 @@ function RootLayoutNav() {
       <Stack.Screen name="admin/properties" options={{ headerShown: false }} />
       <Stack.Screen name="admin/moderation" options={{ headerShown: false }} />
       <Stack.Screen name="admin/settings" options={{ headerShown: false }} />
+      <Stack.Screen name="agent/property-management" options={{ headerShown: false }} />
+      <Stack.Screen name="agent/add-managed-property" options={{ headerShown: false, presentation: "modal" }} />
+      <Stack.Screen name="agent/edit-property/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="search-results" options={{ headerShown: false }} />
+      <Stack.Screen name="account/change-password" options={{ headerShown: false }} />
     </Stack>
   );
 }

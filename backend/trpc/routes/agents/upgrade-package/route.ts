@@ -1,6 +1,6 @@
 import { protectedProcedure } from "@/backend/trpc/create-context";
 import { db } from "@/backend/db";
-import { agentProfiles } from "@/backend/db/schema";
+import { agents } from "@/backend/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
@@ -14,8 +14,8 @@ export const upgradePackageProcedure = protectedProcedure
   .mutation(async ({ ctx, input }) => {
     const [existingProfile] = await db
       .select()
-      .from(agentProfiles)
-      .where(eq(agentProfiles.userId, ctx.user.id))
+      .from(agents)
+      .where(eq(agents.userId, ctx.user.id))
       .limit(1);
 
     if (!existingProfile) {
@@ -26,12 +26,11 @@ export const upgradePackageProcedure = protectedProcedure
     }
 
     await db
-      .update(agentProfiles)
+      .update(agents)
       .set({
-        package: input.package,
-        updatedAt: new Date(),
+        packageLevel: input.package,
       })
-      .where(eq(agentProfiles.userId, ctx.user.id));
+      .where(eq(agents.userId, ctx.user.id));
 
     return { success: true };
   });

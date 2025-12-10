@@ -31,7 +31,7 @@ export const loginProcedure = publicProcedure
       });
     }
 
-    const isValidPassword = await verifyPassword(input.password, user.password);
+    const isValidPassword = await verifyPassword(input.password, user.passwordHash);
 
     if (!isValidPassword) {
       throw new TRPCError({
@@ -43,17 +43,18 @@ export const loginProcedure = publicProcedure
     const token = generateToken();
     const expiresAt = generateTokenExpiry(24 * 7);
 
+    const refreshToken = generateToken();
+    const refreshExpiresAt = generateTokenExpiry(24 * 30);
+
     await ctx.db.insert(sessions).values({
-      id: crypto.randomUUID(),
       userId: user.id,
       token,
+      refreshToken,
       expiresAt,
+      refreshExpiresAt,
     });
 
-    await ctx.db
-      .update(users)
-      .set({ lastActive: new Date() })
-      .where(eq(users.id, user.id));
+
 
     return {
       user: {

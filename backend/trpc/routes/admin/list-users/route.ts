@@ -1,6 +1,6 @@
 import { adminProcedure } from "@/backend/trpc/create-context";
 import { db } from "@/backend/db";
-import { users, agentProfiles, properties, bookings } from "@/backend/db/schema";
+import { users, agents, properties, bookings } from "@/backend/db/schema";
 import { eq, count, sql } from "drizzle-orm";
 import { z } from "zod";
 
@@ -45,7 +45,7 @@ export const listUsersProcedure = adminProcedure
         verified: users.verified,
         blocked: users.blocked,
         createdAt: users.createdAt,
-        lastActive: users.lastActive,
+
       })
       .from(users)
       .where(whereClause)
@@ -62,19 +62,19 @@ export const listUsersProcedure = adminProcedure
         const [bookingsCount] = await db
           .select({ count: count() })
           .from(bookings)
-          .where(eq(bookings.clientId, user.id));
+          .where(eq(bookings.userId, user.id));
 
         const [agentProfile] = await db
-          .select({ package: agentProfiles.package })
-          .from(agentProfiles)
-          .where(eq(agentProfiles.userId, user.id))
+          .select({ packageLevel: agents.packageLevel })
+          .from(agents)
+          .where(eq(agents.userId, user.id))
           .limit(1);
 
         return {
           ...user,
           propertiesCount: propertiesCount?.count || 0,
           bookingsCount: bookingsCount?.count || 0,
-          accountTier: agentProfile?.package || "free",
+          accountTier: agentProfile?.packageLevel || "free",
         };
       })
     );
