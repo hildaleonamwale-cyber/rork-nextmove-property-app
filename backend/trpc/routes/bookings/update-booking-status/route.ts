@@ -30,7 +30,7 @@ export const updateBookingStatusProcedure = protectedProcedure
       .update(bookings)
       .set({
         status: input.status,
-      })
+      } as any)
       .where(eq(bookings.id, input.bookingId))
       .returning();
 

@@ -27,7 +27,7 @@ export const createNotificationProcedure = protectedProcedure
         data: input.data || null,
         read: false,
         createdAt: new Date(),
-      })
+      } as any)
       .returning();
 
     console.log(`[Notification Created] ID: ${newNotification.id}, User: ${input.userId}, Type: ${input.type}`);

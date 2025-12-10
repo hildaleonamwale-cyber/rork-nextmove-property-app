@@ -45,7 +45,7 @@ export const createBookingProcedure = protectedProcedure
         notes: input.notes || null,
         status: "pending",
         createdAt: new Date(),
-      })
+      } as any)
       .returning();
 
 

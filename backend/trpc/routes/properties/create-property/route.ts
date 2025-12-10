@@ -112,8 +112,8 @@ export const createPropertyProcedure = protectedProcedure
         features: input.features ?? [],
         lister: input.lister ?? null,
         featured: Boolean(property.featured),
-        furnished: Boolean(property.furnished),
-        parking: Boolean(property.parking),
+        furnished: property.furnished ? Boolean(property.furnished) : false,
+        parking: property.parking ? Boolean(property.parking) : false,
       },
     };
   });
