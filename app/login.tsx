@@ -20,13 +20,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colors from '@/constants/colors';
 import { useSuperAdmin } from '@/contexts/SuperAdminContext';
 import { supabase } from '@/lib/supabase';
-import { useUser } from '@/contexts/UserContext';
 
 export default function LoginScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { enableSuperAdmin } = useSuperAdmin();
-  const { refetch } = useUser();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -84,14 +82,7 @@ export default function LoginScreen() {
       console.log('User profile:', userData);
       await AsyncStorage.setItem('@user_mode', userData.role === 'admin' ? 'admin' : 'client');
 
-      console.log('Refetching user context...');
-      await Promise.race([
-        refetch(),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Context refetch timeout')), 5000)
-        )
-      ]);
-      console.log('User context refetched');
+      console.log('Login successful, auth state change will trigger user context update...');
       
       if (loginMode === 'admin' || userData.role === 'admin') {
         await enableSuperAdmin();
@@ -111,7 +102,7 @@ export default function LoginScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [email, password, loginMode, router, enableSuperAdmin, refetch]);
+  }, [email, password, loginMode, router, enableSuperAdmin]);
 
   const handleSkipLogin = () => {
     router.replace('/(tabs)/home' as any);
