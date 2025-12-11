@@ -12,31 +12,52 @@ export const [UserProvider, useUser] = createContextHook(() => {
 
   const loadUser = useCallback(async (skipCache: boolean = false) => {
     try {
-      console.log('[UserContext] Loading user, skipCache:', skipCache);
+      console.log('[UserContext] ===== LOADING USER =====');
+      console.log('[UserContext] skipCache:', skipCache);
+      console.log('[UserContext] Timestamp:', new Date().toISOString());
+      
+      console.log('[UserContext] Setting isLoading to true');
       setIsLoading(true);
       setError(null);
+      
+      console.log('[UserContext] Calling getCurrentUser...');
+      const startGetUser = Date.now();
       const currentUser = await getCurrentUser(skipCache);
-      console.log('[UserContext] User loaded:', currentUser ? currentUser.email : 'No user');
+      const getUserDuration = Date.now() - startGetUser;
+      
+      console.log('[UserContext] ✓ getCurrentUser completed in', getUserDuration, 'ms');
+      console.log('[UserContext] User loaded:', currentUser ? JSON.stringify({ id: currentUser.id, email: currentUser.email, role: currentUser.role }) : 'No user');
+      
+      console.log('[UserContext] Setting user state...');
       setUser(currentUser);
+      console.log('[UserContext] ✓ User state set');
+      console.log('[UserContext] ===== LOAD USER COMPLETE =====');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error('[UserContext] Error loading user:', errorMessage);
+      console.error('[UserContext] ❌ Error loading user:', errorMessage);
+      console.error('[UserContext] Error:', error);
       setError(errorMessage);
       setUser(null);
     } finally {
+      console.log('[UserContext] Setting isLoading to false');
       setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
+    console.log('[UserContext] Mounting - initial user load');
     loadUser();
 
+    console.log('[UserContext] Setting up auth state listener');
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('[UserContext] Auth state changed:', event, session ? 'Session exists' : 'No session');
+      console.log('[UserContext] 🔔 Auth state changed:', event, session ? 'Session exists' : 'No session');
+      console.log('[UserContext] Session user ID:', session?.user?.id);
       
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         console.log('[UserContext] Session active/refreshed, loading user...');
+        const startLoad = Date.now();
         await loadUser(true);
+        console.log('[UserContext] Reload after', event, 'took', Date.now() - startLoad, 'ms');
       } else if (event === 'SIGNED_OUT') {
         console.log('[UserContext] User signed out');
         setUser(null);
@@ -44,7 +65,10 @@ export const [UserProvider, useUser] = createContextHook(() => {
       }
     });
 
+    console.log('[UserContext] Auth listener set up');
+
     return () => {
+      console.log('[UserContext] Unmounting - cleaning up');
       subscription.unsubscribe();
     };
   }, [loadUser]);
@@ -86,6 +110,7 @@ export const [UserProvider, useUser] = createContextHook(() => {
   );
 
   const refetch = useCallback((skipCache: boolean = true) => {
+    console.log('[UserContext] refetch called with skipCache:', skipCache);
     return loadUser(skipCache);
   }, [loadUser]);
 

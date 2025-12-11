@@ -146,12 +146,15 @@ export async function login(params: LoginParams): Promise<{ user: SupabaseUser }
   const { email, password } = params;
 
   console.log('[Auth] Starting login for:', email);
+  console.log('[Auth] Timestamp:', new Date().toISOString());
 
   try {
+    console.log('[Auth] Calling supabase.auth.signInWithPassword...');
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
+    console.log('[Auth] signInWithPassword completed');
 
     if (authError) {
       console.error('[Auth] Login error:', authError);
@@ -163,8 +166,11 @@ export async function login(params: LoginParams): Promise<{ user: SupabaseUser }
       throw new Error('No user returned from login');
     }
 
+    console.log('[Auth] ✓ Auth successful - User ID:', authData.user.id);
+    console.log('[Auth] ✓ Session received:', authData.session ? 'YES' : 'NO');
     console.log('[Auth] User authenticated, fetching profile with timeout...');
 
+    console.log('[Auth] Starting profile fetch for user:', authData.user.id);
     const profileFetch = supabase
       .from('users')
       .select('*')
@@ -179,9 +185,12 @@ export async function login(params: LoginParams): Promise<{ user: SupabaseUser }
     let profileError: any;
 
     try {
+      console.log('[Auth] Waiting for profile fetch (10s timeout)...');
       const result: any = await Promise.race([profileFetch, timeout]);
+      console.log('[Auth] Profile fetch completed');
       profile = result.data;
       profileError = result.error;
+      console.log('[Auth] Profile result:', profile ? 'Found' : 'Not found', 'Error:', profileError ? profileError.message : 'None');
     } catch (error: any) {
       console.error('[Auth] Profile fetch timeout or error:', error);
       
@@ -280,8 +289,10 @@ export async function login(params: LoginParams): Promise<{ user: SupabaseUser }
 
     console.log('[Auth] Caching user profile...');
     await AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(user));
+    console.log('[Auth] ✓ Profile cached');
 
-    console.log('[Auth] Login completed successfully');
+    console.log('[Auth] ✅ Login completed successfully - Returning user:', user.email, 'Role:', user.role);
+    console.log('[Auth] About to return user object');
     return { user };
   } catch (error: any) {
     console.error('[Auth] Login failed:', error);

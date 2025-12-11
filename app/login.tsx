@@ -40,44 +40,66 @@ export default function LoginScreen() {
       return;
     }
 
+    console.log('[Login] ===== STARTING LOGIN FLOW =====');
+    console.log('[Login] Email:', email);
+    console.log('[Login] Timestamp:', new Date().toISOString());
     setIsLoading(true);
 
     try {
-      console.log('[Login] Starting login process...');
+      console.log('[Login] Step 1: Calling loginAuth...');
+      const startAuth = Date.now();
       
       const { user } = await loginAuth({
         email: email.trim(),
         password,
       });
-
-      console.log('[Login] Login successful:', user.email);
       
-      console.log('[Login] Refreshing user context...');
+      const authDuration = Date.now() - startAuth;
+      console.log('[Login] ✓ Step 1 COMPLETE - Auth took', authDuration, 'ms');
+      console.log('[Login] ✓ User returned:', JSON.stringify({ id: user.id, email: user.email, role: user.role }));
+      
+      console.log('[Login] Step 2: Refreshing user context...');
+      const startRefetch = Date.now();
       await refetchUser(true);
-      console.log('[Login] User context refreshed');
+      const refetchDuration = Date.now() - startRefetch;
+      console.log('[Login] ✓ Step 2 COMPLETE - Refetch took', refetchDuration, 'ms');
       
+      console.log('[Login] Step 3: Saving user mode to AsyncStorage...');
       await AsyncStorage.setItem('@user_mode', user.role === 'admin' ? 'admin' : 'client');
+      console.log('[Login] ✓ Step 3 COMPLETE - User mode saved');
       
-      console.log('[Login] Navigating based on role:', user.role);
+      console.log('[Login] Step 4: Determining navigation target...');
+      console.log('[Login] loginMode:', loginMode, 'user.role:', user.role);
       
+      let targetRoute: string;
       if (loginMode === 'admin' || user.role === 'admin') {
+        console.log('[Login] Step 4a: Enabling super admin...');
         await enableSuperAdmin();
-        console.log('[Login] Navigating to admin dashboard');
-        router.replace('/admin/dashboard' as any);
+        targetRoute = '/admin/dashboard';
+        console.log('[Login] ✓ Step 4a COMPLETE - Admin enabled');
       } else if (user.role === 'agent' || user.role === 'agency') {
-        console.log('[Login] Navigating to agent dashboard');
-        router.replace('/agent/dashboard' as any);
+        targetRoute = '/agent/dashboard';
       } else {
-        console.log('[Login] Navigating to home');
-        router.replace('/(tabs)/home' as any);
+        targetRoute = '/(tabs)/home';
       }
       
-      console.log('[Login] Navigation completed');
+      console.log('[Login] Step 5: Navigating to:', targetRoute);
+      const startNav = Date.now();
+      router.replace(targetRoute as any);
+      const navDuration = Date.now() - startNav;
+      console.log('[Login] ✓ Step 5 COMPLETE - Navigation called, took', navDuration, 'ms');
+      
+      console.log('[Login] ===== LOGIN FLOW COMPLETE =====');
     } catch (error: any) {
-      console.error('[Login] Login error:', error);
+      console.error('[Login] ❌ LOGIN FAILED');
+      console.error('[Login] Error type:', error.constructor.name);
+      console.error('[Login] Error message:', error.message);
+      console.error('[Login] Error stack:', error.stack);
       Alert.alert('Login Failed', error.message || 'Invalid email or password');
     } finally {
+      console.log('[Login] Setting isLoading to false');
       setIsLoading(false);
+      console.log('[Login] isLoading set to false');
     }
   }, [email, password, loginMode, router, enableSuperAdmin, refetchUser]);
 
