@@ -1,12 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   User,
   HelpCircle,
@@ -28,6 +28,7 @@ import { useSuperAdmin } from '@/contexts/SuperAdminContext';
 import UniformHeader from '@/components/UniformHeader';
 import { useAgentProfile } from '@/contexts/AgentProfileContext';
 import LoginPrompt from '@/components/LoginPrompt';
+import { logout } from '@/utils/supabase-auth';
 
 export default function AccountScreen() {
   const router = useRouter();
@@ -35,6 +36,7 @@ export default function AccountScreen() {
   const { isSuperAdmin, enableSuperAdmin } = useSuperAdmin();
   const { user, isLoading } = useUser();
   const { profile: agentProfile, isLoading: agentLoading } = useAgentProfile();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const clientMenuSections = [
     {
@@ -237,12 +239,25 @@ export default function AccountScreen() {
         <TouchableOpacity 
           style={styles.logoutButton}
           onPress={async () => {
-            await AsyncStorage.clear();
-            router.replace('/login' as any);
+            try {
+              setIsLoggingOut(true);
+              console.log('[Account] Starting logout...');
+              await logout();
+              console.log('[Account] Logout complete, navigating to home...');
+              router.replace('/(tabs)/home' as any);
+            } catch (error) {
+              console.error('[Account] Logout error:', error);
+              setIsLoggingOut(false);
+            }
           }}
+          disabled={isLoggingOut}
         >
-          <LogOut size={20} color={Colors.error} />
-          <Text style={styles.logoutText}>Logout</Text>
+          {isLoggingOut ? (
+            <ActivityIndicator size="small" color={Colors.error} />
+          ) : (
+            <LogOut size={20} color={Colors.error} />
+          )}
+          <Text style={styles.logoutText}>{isLoggingOut ? 'Logging out...' : 'Logout'}</Text>
         </TouchableOpacity>
 
         <View style={{ height: 100 }} />

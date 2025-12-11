@@ -301,9 +301,23 @@ export async function login(params: LoginParams): Promise<{ user: SupabaseUser }
 }
 
 export async function logout(): Promise<void> {
-  await supabase.auth.signOut();
-  await AsyncStorage.removeItem(USER_PROFILE_KEY);
-  await AsyncStorage.removeItem('@user_mode');
+  console.log('[Auth] Logging out - clearing all data');
+  
+  try {
+    await supabase.auth.signOut();
+    console.log('[Auth] Supabase sign out complete');
+  } catch (error) {
+    console.error('[Auth] Error signing out from Supabase:', error);
+  }
+  
+  try {
+    await AsyncStorage.clear();
+    console.log('[Auth] AsyncStorage cleared');
+  } catch (error) {
+    console.error('[Auth] Error clearing AsyncStorage:', error);
+  }
+  
+  console.log('[Auth] Logout complete');
 }
 
 export async function getCurrentUser(skipCache: boolean = false): Promise<SupabaseUser | null> {

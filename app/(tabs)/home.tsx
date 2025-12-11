@@ -15,7 +15,6 @@ import { useRouter } from 'expo-router';
 import { Search, MapPin, Bell, Plus, Star, Clock, Grid3x3 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
-import { mockListings } from '@/mocks/properties';
 import { useSupabaseProperties } from '@/hooks/useSupabaseProperties';
 import BannerCarousel from '@/components/BannerCarousel';
 import { useSuperAdmin } from '@/contexts/SuperAdminContext';
@@ -24,7 +23,6 @@ import StandCard from '@/components/StandCard';
 import CommercialPropertyCard from '@/components/CommercialPropertyCard';
 import RoomCard from '@/components/RoomCard';
 import SectionHeader from '@/components/SectionHeader';
-import { Listing } from '@/types/property';
 import { getAllCityNames } from '@/constants/locations';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -40,12 +38,12 @@ export default function HomeScreen() {
 
   const allCities = useMemo(() => getAllCityNames(), []);
 
-  const { properties, isLoading: isLoadingProperties } = useSupabaseProperties({
+  const { properties } = useSupabaseProperties({
     limit: 20,
     featured: false,
   });
 
-  const { properties: featuredProperties, isLoading: isLoadingFeatured } = useSupabaseProperties({
+  const { properties: featuredProperties } = useSupabaseProperties({
     limit: 10,
     featured: true,
   });
