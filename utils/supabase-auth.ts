@@ -163,22 +163,86 @@ export async function login(params: LoginParams): Promise<{ user: SupabaseUser }
       throw new Error('No user returned from login');
     }
 
-    console.log('[Auth] User authenticated, fetching profile...');
+    console.log('[Auth] User authenticated, fetching profile with timeout...');
 
-    const { data: profile, error: profileError } = await supabase
+    const profileFetch = supabase
       .from('users')
       .select('*')
       .eq('id', authData.user.id)
       .single();
 
+    const timeout = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Profile fetch timeout')), 10000)
+    );
+
+    let profile: any;
+    let profileError: any;
+
+    try {
+      const result: any = await Promise.race([profileFetch, timeout]);
+      profile = result.data;
+      profileError = result.error;
+    } catch (error: any) {
+      console.error('[Auth] Profile fetch timeout or error:', error);
+      
+      const basicUser: SupabaseUser = {
+        id: authData.user.id,
+        email: authData.user.email || email,
+        name: authData.user.user_metadata?.name || 'User',
+        phone: authData.user.user_metadata?.phone || null,
+        avatar: null,
+        role: 'client',
+        verified: false,
+        blocked: false,
+        createdAt: new Date(),
+        lastActive: new Date(),
+      };
+
+      console.log('[Auth] Using basic user profile due to fetch timeout');
+      await AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(basicUser));
+      return { user: basicUser };
+    }
+
     if (profileError) {
       console.error('[Auth] Profile fetch error:', profileError);
-      throw new Error('Failed to fetch user profile: ' + profileError.message);
+      
+      const basicUser: SupabaseUser = {
+        id: authData.user.id,
+        email: authData.user.email || email,
+        name: authData.user.user_metadata?.name || 'User',
+        phone: authData.user.user_metadata?.phone || null,
+        avatar: null,
+        role: 'client',
+        verified: false,
+        blocked: false,
+        createdAt: new Date(),
+        lastActive: new Date(),
+      };
+
+      console.log('[Auth] Using basic user profile due to fetch error');
+      await AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(basicUser));
+      return { user: basicUser };
     }
 
     if (!profile) {
       console.error('[Auth] No profile found');
-      throw new Error('User profile not found');
+      
+      const basicUser: SupabaseUser = {
+        id: authData.user.id,
+        email: authData.user.email || email,
+        name: authData.user.user_metadata?.name || 'User',
+        phone: authData.user.user_metadata?.phone || null,
+        avatar: null,
+        role: 'client',
+        verified: false,
+        blocked: false,
+        createdAt: new Date(),
+        lastActive: new Date(),
+      };
+
+      console.log('[Auth] Using basic user profile - profile not found');
+      await AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(basicUser));
+      return { user: basicUser };
     }
 
     if (profile.blocked) {
@@ -189,12 +253,17 @@ export async function login(params: LoginParams): Promise<{ user: SupabaseUser }
 
     console.log('[Auth] Updating last active timestamp...');
     
-    supabase
-      .from('users')
-      .update({ last_active: new Date().toISOString() })
-      .eq('id', authData.user.id)
-      .then(() => console.log('[Auth] Last active updated'));
-    console.log('[Auth] Last active update initiated');
+    (async () => {
+      try {
+        await supabase
+          .from('users')
+          .update({ last_active: new Date().toISOString() })
+          .eq('id', authData.user.id);
+        console.log('[Auth] Last active updated');
+      } catch (err: any) {
+        console.warn('[Auth] Last active update failed:', err);
+      }
+    })();
 
     const user: SupabaseUser = {
       id: profile.id,

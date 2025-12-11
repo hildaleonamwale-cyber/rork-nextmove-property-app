@@ -12,13 +12,15 @@ export const [UserProvider, useUser] = createContextHook(() => {
 
   const loadUser = useCallback(async (skipCache: boolean = false) => {
     try {
+      console.log('[UserContext] Loading user, skipCache:', skipCache);
       setIsLoading(true);
       setError(null);
       const currentUser = await getCurrentUser(skipCache);
+      console.log('[UserContext] User loaded:', currentUser ? currentUser.email : 'No user');
       setUser(currentUser);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error('Error loading user:', errorMessage);
+      console.error('[UserContext] Error loading user:', errorMessage);
       setError(errorMessage);
       setUser(null);
     } finally {
@@ -30,13 +32,13 @@ export const [UserProvider, useUser] = createContextHook(() => {
     loadUser();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, session ? 'Session exists' : 'No session');
+      console.log('[UserContext] Auth state changed:', event, session ? 'Session exists' : 'No session');
       
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        console.log('Session active/refreshed, loading user...');
+        console.log('[UserContext] Session active/refreshed, loading user...');
         await loadUser(true);
       } else if (event === 'SIGNED_OUT') {
-        console.log('User signed out');
+        console.log('[UserContext] User signed out');
         setUser(null);
         setError(null);
       }

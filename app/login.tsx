@@ -20,11 +20,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colors from '@/constants/colors';
 import { useSuperAdmin } from '@/contexts/SuperAdminContext';
 import { login as loginAuth } from '@/utils/supabase-auth';
+import { useUser } from '@/contexts/UserContext';
 
 export default function LoginScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { enableSuperAdmin } = useSuperAdmin();
+  const { refetch: refetchUser } = useUser();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -41,34 +43,43 @@ export default function LoginScreen() {
     setIsLoading(true);
 
     try {
-      console.log('Starting login process...');
+      console.log('[Login] Starting login process...');
       
       const { user } = await loginAuth({
         email: email.trim(),
         password,
       });
 
-      console.log('Login successful:', user);
+      console.log('[Login] Login successful:', user.email);
+      
+      console.log('[Login] Refreshing user context...');
+      await refetchUser(true);
+      console.log('[Login] User context refreshed');
+      
       await AsyncStorage.setItem('@user_mode', user.role === 'admin' ? 'admin' : 'client');
+      
+      console.log('[Login] Navigating based on role:', user.role);
       
       if (loginMode === 'admin' || user.role === 'admin') {
         await enableSuperAdmin();
-        console.log('Navigating to admin dashboard');
+        console.log('[Login] Navigating to admin dashboard');
         router.replace('/admin/dashboard' as any);
       } else if (user.role === 'agent' || user.role === 'agency') {
-        console.log('Navigating to agent dashboard');
+        console.log('[Login] Navigating to agent dashboard');
         router.replace('/agent/dashboard' as any);
       } else {
-        console.log('Navigating to home');
+        console.log('[Login] Navigating to home');
         router.replace('/(tabs)/home' as any);
       }
+      
+      console.log('[Login] Navigation completed');
     } catch (error: any) {
-      console.error('Login error:', error);
+      console.error('[Login] Login error:', error);
       Alert.alert('Login Failed', error.message || 'Invalid email or password');
     } finally {
       setIsLoading(false);
     }
-  }, [email, password, loginMode, router, enableSuperAdmin]);
+  }, [email, password, loginMode, router, enableSuperAdmin, refetchUser]);
 
   const handleSkipLogin = () => {
     router.replace('/(tabs)/home' as any);
