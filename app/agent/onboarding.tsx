@@ -11,18 +11,19 @@ import {
   Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { X, CheckCircle, Building2, User, Briefcase, Camera, ImageIcon } from 'lucide-react-native';
+import { X, CheckCircle, Building2, User, Camera, ImageIcon } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
 import { useAgentProfile } from '@/contexts/AgentProfileContext';
+import { uploadAvatarImage } from '@/utils/supabase-storage';
 import { useUser } from '@/contexts/UserContext';
 import SuccessPrompt from '@/components/SuccessPrompt';
 
 export default function AgentOnboardingScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { refetch: refetchUser } = useUser();
+  const { user, refetch: refetchUser } = useUser();
   const { profile, updateProfile, completeOnboarding } = useAgentProfile();
 
   const [step, setStep] = useState(1);
@@ -63,9 +64,35 @@ export default function AgentOnboardingScreen() {
     try {
       console.log('Starting onboarding completion...');
       console.log('Form data:', formData);
+      console.log('Profile picture URI:', profilePicture);
+      console.log('Banner image URI:', bannerImage);
       
-      await updateProfile(formData);
-      console.log('Profile updated');
+      let avatarUrl = user?.avatar;
+      
+      if (profilePicture && user?.id) {
+        try {
+          console.log('Uploading profile picture...');
+          avatarUrl = await uploadAvatarImage(profilePicture, user.id);
+          console.log('Profile picture uploaded:', avatarUrl);
+          
+          await refetchUser();
+        } catch (uploadError) {
+          console.error('Failed to upload profile picture:', uploadError);
+          Alert.alert('Warning', 'Profile picture upload failed, but we\'ll continue with setup.');
+        }
+      }
+      
+      const profileUpdates = {
+        companyName: formData.companyName,
+        bio: formData.bio,
+        phone: formData.phone,
+        email: formData.email,
+        specialties: formData.specialties,
+      };
+      
+      console.log('Updating profile with:', profileUpdates);
+      await updateProfile(profileUpdates);
+      console.log('Profile updated successfully');
       
       await completeOnboarding();
       console.log('Onboarding completed');

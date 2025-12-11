@@ -60,11 +60,12 @@ export const [AgentProvider, useAgent] = createContextHook(() => {
 
       if (data) {
         const userData = Array.isArray(data.users) ? data.users[0] : data.users;
+        const setupComplete = Boolean(data.company_name && data.company_name.trim().length > 0);
         setProfile({
           id: data.id,
           userId: data.user_id,
           package: data.package_level || 'free',
-          accountSetupComplete: true,
+          accountSetupComplete: setupComplete,
           companyName: data.company_name,
           companyLogo: null,
           banner: null,

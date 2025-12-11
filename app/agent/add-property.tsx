@@ -27,6 +27,29 @@ export default function AddPropertyScreen() {
   const { profile } = useAgent();
   const [showSuccess, setShowSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasCheckedOnboarding, setHasCheckedOnboarding] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!hasCheckedOnboarding && profile !== null) {
+      console.log('Checking onboarding status:', profile);
+      console.log('accountSetupComplete:', profile?.accountSetupComplete);
+      
+      if (profile && !profile.accountSetupComplete) {
+        console.log('Agent onboarding not complete, redirecting...');
+        Alert.alert(
+          'Complete Setup',
+          'Please complete your agent profile setup first.',
+          [{
+            text: 'OK',
+            onPress: () => router.replace('/agent/onboarding' as any),
+          }]
+        );
+      } else {
+        console.log('Agent onboarding is complete or no profile yet');
+      }
+      setHasCheckedOnboarding(true);
+    }
+  }, [profile, router, hasCheckedOnboarding]);
 
   const [formData, setFormData] = useState({
     title: '',

@@ -103,7 +103,20 @@ export async function uploadAvatarImage(
       throw uploadError;
     }
 
-    return getSupabaseStorageUrl('avatars', filePath);
+    const avatarUrl = getSupabaseStorageUrl('avatars', filePath);
+
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ avatar: avatarUrl })
+      .eq('id', userId);
+
+    if (updateError) {
+      console.error('Error updating user avatar URL:', updateError);
+      throw updateError;
+    }
+
+    console.log('Avatar uploaded and user record updated:', avatarUrl);
+    return avatarUrl;
   } catch (error) {
     console.error('Error uploading avatar:', error);
     throw error;
