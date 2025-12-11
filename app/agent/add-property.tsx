@@ -18,7 +18,6 @@ import Colors from '@/constants/colors';
 import { useAgent } from '@/contexts/AgentContext';
 import { supabase } from '@/lib/supabase';
 import SuccessPrompt from '@/components/SuccessPrompt';
-import { PropertyDraft } from '@/types/property';
 import { PROVINCES, getCitiesByProvince, Province } from '@/constants/locations';
 import { uploadPropertyImages } from '@/utils/supabase-storage';
 
@@ -102,6 +101,10 @@ export default function AddPropertyScreen() {
   };
 
   const handleSave = async () => {
+    if (isSubmitting) {
+      return;
+    }
+
     if (!profile?.id || !profile?.userId) {
       Alert.alert('Error', 'Please complete agent onboarding first');
       return;

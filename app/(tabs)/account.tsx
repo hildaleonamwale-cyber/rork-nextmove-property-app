@@ -9,7 +9,6 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   User,
-  CreditCard,
   HelpCircle,
   Shield,
   FileText,
@@ -23,7 +22,6 @@ import { useRouter } from 'expo-router';
 import Colors from '@/constants/colors';
 import { DesignSystem } from '@/constants/designSystem';
 import { useUserMode } from '@/contexts/UserModeContext';
-import { useAgentProfile } from '@/contexts/AgentProfileContext';
 import { useUser } from '@/contexts/UserContext';
 import OptimizedImage from '@/components/OptimizedImage';
 import { useSuperAdmin } from '@/contexts/SuperAdminContext';
@@ -32,7 +30,6 @@ import UniformHeader from '@/components/UniformHeader';
 export default function AccountScreen() {
   const router = useRouter();
   const { isClient, isAgent, switchMode } = useUserMode();
-  const { profile } = useAgentProfile();
   const { isSuperAdmin, enableSuperAdmin } = useSuperAdmin();
   const { user, isLoading } = useUser();
 
@@ -100,11 +97,11 @@ export default function AccountScreen() {
           <TouchableOpacity
             style={[styles.modeButton, isAgent && styles.modeButtonActive]}
             onPress={() => {
-              switchMode('agent');
-              if (profile?.id) {
-                setTimeout(() => router.push('/agent/dashboard' as any), 100);
-              } else {
+              if (!isAgent) {
+                switchMode('agent');
                 setTimeout(() => router.push('/agent/onboarding' as any), 100);
+              } else {
+                setTimeout(() => router.push('/agent/dashboard' as any), 100);
               }
             }}
           >

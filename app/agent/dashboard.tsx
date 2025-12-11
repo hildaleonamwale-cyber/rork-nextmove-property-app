@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   Platform,
   Image,
+  Alert,
+  Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
@@ -38,6 +40,8 @@ export default function AgentDashboardScreen() {
   const { switchMode } = useUserMode();
   const [properties, setProperties] = React.useState<any[]>([]);
   const [analytics, setAnalytics] = React.useState<any>(null);
+  const [selectedProperty, setSelectedProperty] = React.useState<any>(null);
+  const [showPropertyMenu, setShowPropertyMenu] = React.useState(false);
 
   const fetchProperties = React.useCallback(async () => {
     if (!profile?.userId) return;
@@ -413,7 +417,10 @@ export default function AgentDashboardScreen() {
                 <TouchableOpacity
                   key={property.id}
                   style={styles.propertyItem}
-                  onPress={() => router.push(`/property/${property.id}` as any)}
+                  onPress={() => {
+                    setSelectedProperty(property);
+                    setShowPropertyMenu(true);
+                  }}
                 >
                   <Home size={20} color={Colors.primary} />
                   <View style={styles.propertyInfo}>
@@ -431,6 +438,92 @@ export default function AgentDashboardScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      <Modal
+        visible={showPropertyMenu}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPropertyMenu(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowPropertyMenu(false)}
+        >
+          <View style={styles.propertyMenu}>
+            <View style={styles.propertyMenuHeader}>
+              <Text style={styles.propertyMenuTitle}>Manage Property</Text>
+              <Text style={styles.propertyMenuSubtitle}>{selectedProperty?.title}</Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.propertyMenuOption}
+              onPress={() => {
+                setShowPropertyMenu(false);
+                router.push(`/agent/edit-property/${selectedProperty?.id}` as any);
+              }}
+            >
+              <Edit size={20} color={Colors.primary} />
+              <Text style={styles.propertyMenuOptionText}>Edit Property</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.propertyMenuOption}
+              onPress={() => {
+                setShowPropertyMenu(false);
+                router.push(`/property/${selectedProperty?.id}` as any);
+              }}
+            >
+              <Eye size={20} color={Colors.accent} />
+              <Text style={styles.propertyMenuOptionText}>View Public Page</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.propertyMenuOption, styles.propertyMenuOptionDanger]}
+              onPress={() => {
+                setShowPropertyMenu(false);
+                Alert.alert(
+                  'Delete Property',
+                  'Are you sure you want to delete this property? This action cannot be undone.',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Delete',
+                      style: 'destructive',
+                      onPress: async () => {
+                        try {
+                          const { error } = await supabase
+                            .from('properties')
+                            .delete()
+                            .eq('id', selectedProperty?.id);
+                          
+                          if (error) throw error;
+                          
+                          Alert.alert('Success', 'Property deleted successfully');
+                          fetchProperties();
+                        } catch (error) {
+                          console.error('Error deleting property:', error);
+                          Alert.alert('Error', 'Failed to delete property');
+                        }
+                      },
+                    },
+                  ]
+                );
+              }}
+            >
+              <Home size={20} color={Colors.error} />
+              <Text style={[styles.propertyMenuOptionText, styles.propertyMenuOptionTextDanger]}>Delete Property</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.propertyMenuCancel}
+              onPress={() => setShowPropertyMenu(false)}
+            >
+              <Text style={styles.propertyMenuCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -767,5 +860,63 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700' as const,
     color: Colors.primary,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end' as const,
+  },
+  propertyMenu: {
+    backgroundColor: Colors.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 24,
+    paddingBottom: 40,
+    paddingHorizontal: 20,
+  },
+  propertyMenuHeader: {
+    marginBottom: 20,
+  },
+  propertyMenuTitle: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+    color: Colors.text.primary,
+    marginBottom: 4,
+  },
+  propertyMenuSubtitle: {
+    fontSize: 14,
+    color: Colors.text.secondary,
+  },
+  propertyMenuOption: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    backgroundColor: Colors.gray[50],
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  propertyMenuOptionDanger: {
+    backgroundColor: `${Colors.error}10`,
+  },
+  propertyMenuOptionText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: Colors.text.primary,
+  },
+  propertyMenuOptionTextDanger: {
+    color: Colors.error,
+  },
+  propertyMenuCancel: {
+    marginTop: 8,
+    paddingVertical: 16,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  propertyMenuCancelText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: Colors.text.secondary,
   },
 });
