@@ -18,6 +18,7 @@ import Colors from '@/constants/colors';
 import { useSupabaseProperties } from '@/hooks/useSupabaseProperties';
 import BannerCarousel from '@/components/BannerCarousel';
 import { useSuperAdmin } from '@/contexts/SuperAdminContext';
+import { useUser } from '@/contexts/UserContext';
 import PropertyCard from '@/components/PropertyCard';
 import StandCard from '@/components/StandCard';
 import CommercialPropertyCard from '@/components/CommercialPropertyCard';
@@ -30,6 +31,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 export default function HomeScreen() {
   const router = useRouter();
   const { banners } = useSuperAdmin();
+  const { user } = useUser();
   const insets = useSafeAreaInsets();
   const [location] = useState('Harare');
   const [showTotalPrice, setShowTotalPrice] = useState(false);
@@ -77,7 +79,13 @@ export default function HomeScreen() {
             <View style={styles.profileInfo}>
               <TouchableOpacity 
                 style={styles.addButton}
-                onPress={() => router.push('/agent/add-property' as any)}
+                onPress={() => {
+                  if (!user) {
+                    router.push('/login' as any);
+                  } else {
+                    router.push('/agent/add-property' as any);
+                  }
+                }}
               >
                 <Plus size={20} color="#FFFFFF" strokeWidth={2.5} />
               </TouchableOpacity>

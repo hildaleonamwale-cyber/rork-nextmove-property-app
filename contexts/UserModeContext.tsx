@@ -13,9 +13,15 @@ export const [UserModeProvider, useUserMode] = createContextHook(() => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadMode();
+    if (!user) {
+      console.log('[UserModeContext] No user, resetting to client mode');
+      setMode('client');
+      setIsLoading(false);
+    } else {
+      loadMode();
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.role, isAgent]);
+  }, [user?.role, isAgent, user]);
 
   const loadMode = async () => {
     try {

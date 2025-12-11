@@ -59,9 +59,10 @@ export const [UserProvider, useUser] = createContextHook(() => {
         await loadUser(true);
         console.log('[UserContext] Reload after', event, 'took', Date.now() - startLoad, 'ms');
       } else if (event === 'SIGNED_OUT') {
-        console.log('[UserContext] User signed out');
+        console.log('[UserContext] User signed out - clearing all user data');
         setUser(null);
         setError(null);
+        setIsLoading(false);
       }
     });
 
