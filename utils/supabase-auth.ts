@@ -112,8 +112,9 @@ export async function signup(params: SignupParams): Promise<{ user: SupabaseUser
       break;
     }
 
-    if (error && !error.message.includes('No rows')) {
-      console.error('Profile fetch error:', error.message || JSON.stringify(error));
+    if (error && !error.message?.includes('No rows')) {
+      const errorMsg = error instanceof Error ? error.message : (typeof error === 'string' ? error : JSON.stringify(error, Object.getOwnPropertyNames(error)));
+      console.error('Profile fetch error:', errorMsg);
     }
   }
 
@@ -213,7 +214,8 @@ export async function login(params: LoginParams): Promise<{ user: SupabaseUser }
     }
 
     if (profileError) {
-      console.error('[Auth] Profile fetch error:', profileError.message || JSON.stringify(profileError));
+      const errorMsg = profileError instanceof Error ? profileError.message : (typeof profileError === 'string' ? profileError : JSON.stringify(profileError, Object.getOwnPropertyNames(profileError)));
+      console.error('[Auth] Profile fetch error:', errorMsg);
       
       const basicUser: SupabaseUser = {
         id: authData.user.id,
@@ -347,7 +349,8 @@ export async function getCurrentUser(skipCache: boolean = false): Promise<Supaba
     .single();
 
   if (error) {
-    console.error('Error fetching user profile:', error.message || JSON.stringify(error));
+    const errorMsg = error instanceof Error ? error.message : (typeof error === 'string' ? error : JSON.stringify(error, Object.getOwnPropertyNames(error)));
+    console.error('Error fetching user profile:', errorMsg);
     await supabase.auth.signOut();
     await AsyncStorage.removeItem(USER_PROFILE_KEY);
     return null;
