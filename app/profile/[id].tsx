@@ -137,8 +137,9 @@ export default function ProfileScreen() {
           setProperties(transformedProps);
         }
       } catch (err: any) {
-        console.error('Profile fetch error:', err);
-        setAgentError(err);
+        const errorMsg = err?.message || JSON.stringify(err) || 'Unknown error';
+        console.error('Profile fetch error:', errorMsg);
+        setAgentError(errorMsg);
       } finally {
         setAgentLoading(false);
       }

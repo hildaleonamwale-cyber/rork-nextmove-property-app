@@ -113,7 +113,7 @@ export async function signup(params: SignupParams): Promise<{ user: SupabaseUser
     }
 
     if (error && !error.message.includes('No rows')) {
-      console.error('Profile fetch error:', error);
+      console.error('Profile fetch error:', error.message || JSON.stringify(error));
     }
   }
 
@@ -213,7 +213,7 @@ export async function login(params: LoginParams): Promise<{ user: SupabaseUser }
     }
 
     if (profileError) {
-      console.error('[Auth] Profile fetch error:', profileError);
+      console.error('[Auth] Profile fetch error:', profileError.message || JSON.stringify(profileError));
       
       const basicUser: SupabaseUser = {
         id: authData.user.id,
@@ -347,7 +347,7 @@ export async function getCurrentUser(skipCache: boolean = false): Promise<Supaba
     .single();
 
   if (error) {
-    console.error('Error fetching user profile:', error);
+    console.error('Error fetching user profile:', error.message || JSON.stringify(error));
     await supabase.auth.signOut();
     await AsyncStorage.removeItem(USER_PROFILE_KEY);
     return null;
