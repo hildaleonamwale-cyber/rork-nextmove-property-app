@@ -136,14 +136,12 @@ export default function AgentDashboardScreen() {
     switch (profile.package) {
       case 'free': return '#10B981';
       case 'pro': return Colors.primary;
-      case 'agency': return '#0019ff';
       default: return Colors.primary;
     }
   };
 
   const getPackageIcon = () => {
     switch (profile.package) {
-      case 'agency': return <Users size={20} color={Colors.white} />;
       case 'pro': return <Crown size={20} color={Colors.white} />;
       default: return <CheckCircle2 size={20} color={Colors.white} />;
     }
@@ -153,16 +151,9 @@ export default function AgentDashboardScreen() {
     if (profile.package === 'free') {
       return {
         title: 'Upgrade to Pro',
-        description: 'Unlock booking calendar, messaging, verified badge, and full analytics',
+        description: 'Unlock booking calendar, carousel, staff management, messaging, verified badge, and full analytics',
         color: Colors.primary,
         targetPackage: 'pro' as const,
-      };
-    } else if (profile.package === 'pro') {
-      return {
-        title: 'Upgrade to Agency',
-        description: 'Get staff accounts, shared dashboard, portfolio page, and 3D tours',
-        color: '#0019ff',
-        targetPackage: 'agency' as const,
       };
     }
     return null;
@@ -335,13 +326,13 @@ export default function AgentDashboardScreen() {
           </TouchableOpacity>
         )}
 
-        {hasFeature('staff_accounts') ? (
+        {hasFeature('staff_management') ? (
           <TouchableOpacity
             style={styles.actionCard}
             onPress={() => router.push('/agent/staff' as any)}
           >
-            <View style={[styles.actionIcon, { backgroundColor: '#0019ff15' }]}>
-              <Users size={24} color='#0019ff' />
+            <View style={[styles.actionIcon, { backgroundColor: Colors.primary + '15' }]}>
+              <Users size={24} color={Colors.primary} />
             </View>
             <View style={styles.actionContent}>
               <Text style={styles.actionTitle}>Manage Staff</Text>
@@ -355,41 +346,15 @@ export default function AgentDashboardScreen() {
                 <Users size={24} color={Colors.text.light} />
               </View>
               <View style={styles.actionContent}>
-                <Text style={styles.lockedActionTitle}>Staff Accounts</Text>
-                <Text style={styles.actionDescription}>Upgrade to Agency to unlock</Text>
+                <Text style={styles.lockedActionTitle}>Staff Management</Text>
+                <Text style={styles.actionDescription}>Upgrade to Pro to unlock</Text>
               </View>
             </View>
             <Lock size={20} color={Colors.text.light} />
           </TouchableOpacity>
         )}
 
-        {hasFeature('property_management') ? (
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => router.push('/agent/property-management' as any)}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: '#10B98115' }]}>
-              <Building2 size={24} color='#10B981' />
-            </View>
-            <View style={styles.actionContent}>
-              <Text style={styles.actionTitle}>Manage Properties</Text>
-              <Text style={styles.actionDescription}>Track and manage all properties</Text>
-            </View>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity style={styles.lockedActionCard}>
-            <View style={styles.lockedActionLeft}>
-              <View style={[styles.actionIcon, { backgroundColor: Colors.gray[100] }]}>
-                <Building2 size={24} color={Colors.text.light} />
-              </View>
-              <View style={styles.actionContent}>
-                <Text style={styles.lockedActionTitle}>Property Management</Text>
-                <Text style={styles.actionDescription}>Upgrade to Agency to unlock</Text>
-              </View>
-            </View>
-            <Lock size={20} color={Colors.text.light} />
-          </TouchableOpacity>
-        )}
+
 
         <View style={styles.propertiesSection}>
           <View style={styles.sectionHeaderRow}>

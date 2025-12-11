@@ -6,7 +6,7 @@ import { useUser } from "./UserContext";
 export interface AgentProfile {
   id: string;
   userId: string;
-  package: "free" | "pro" | "agency";
+  package: "free" | "pro";
   accountSetupComplete: boolean;
   companyName?: string | null;
   companyLogo?: string | null;
@@ -132,7 +132,7 @@ export const [AgentProvider, useAgent] = createContextHook(() => {
 
   const createProfile = useCallback(
     async (data: {
-      package?: "free" | "pro" | "agency";
+      package?: "free" | "pro";
       companyName?: string;
       bio?: string;
       specialties?: string[];
@@ -208,7 +208,7 @@ export const [AgentProvider, useAgent] = createContextHook(() => {
 
   const updateProfile = useCallback(
     async (updates: {
-      package?: "free" | "pro" | "agency";
+      package?: "free" | "pro";
       accountSetupComplete?: boolean;
       companyName?: string;
       companyLogo?: string;
@@ -265,7 +265,7 @@ export const [AgentProvider, useAgent] = createContextHook(() => {
   );
 
   const upgradePackage = useCallback(
-    async (newPackage: "free" | "pro" | "agency") => {
+    async (newPackage: "free" | "pro") => {
       if (!user?.id) throw new Error('No user ID - please log in first');
 
       try {
@@ -351,23 +351,10 @@ export const [AgentProvider, useAgent] = createContextHook(() => {
           "messaging",
           "verified_badge",
           "full_analytics",
+          "staff_management",
+          "carousel",
         ],
-        agency: [
-          "basic_listing",
-          "profile_edit",
-          "banner_upload",
-          "updates",
-          "basic_analytics",
-          "booking_calendar",
-          "messaging",
-          "verified_badge",
-          "full_analytics",
-          "staff_accounts",
-          "shared_dashboard",
-          "portfolio_page",
-          "3d_tours",
-          "property_management",
-        ],
+
       };
 
       return packageFeatures[profile.package].includes(feature);

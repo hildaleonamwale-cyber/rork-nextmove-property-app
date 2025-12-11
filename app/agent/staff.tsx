@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -9,8 +9,9 @@ import {
   Platform,
   Modal,
   Alert,
-  Clipboard,
+  Image,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import {
   ArrowLeft,
@@ -21,11 +22,9 @@ import {
   Edit2,
   Trash2,
   X,
-  Shield,
   UserCircle,
-  Copy,
-  Key,
-  CheckCircle,
+  Camera,
+
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
@@ -42,35 +41,18 @@ export default function StaffScreen() {
   const [formData, setFormData] = useState({
     name: '',
     role: '',
+    description: '',
     email: '',
     phone: '',
-    permissions: [] as string[],
+    whatsapp: '',
+    avatar: '',
   });
-  const [inviteLink, setInviteLink] = useState<string | null>(null);
-  const [showInviteModal, setShowInviteModal] = useState(false);
-
-  const generateInviteToken = useCallback(() => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let token = '';
-    for (let i = 0; i < 32; i++) {
-      token += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return token;
-  }, []);
 
   const handleAddMember = async () => {
-    if (!formData.name || !formData.email) {
-      Alert.alert('Missing Information', 'Please provide name and email for the staff member.');
+    if (!formData.name) {
+      Alert.alert('Missing Information', 'Please provide a name for the staff member.');
       return;
     }
-
-    if (formData.permissions.length === 0) {
-      Alert.alert('No Permissions', 'Please select at least one permission for the staff member.');
-      return;
-    }
-
-    const inviteToken = generateInviteToken();
-    const inviteExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
     try {
       await addStaff({
@@ -78,14 +60,10 @@ export default function StaffScreen() {
         role: formData.role || 'Agent',
         email: formData.email,
         phone: formData.phone,
-        permissions: formData.permissions,
-        active: false,
-        inviteToken,
-        inviteExpiry,
+        permissions: [],
+        active: true,
       });
-      const link = `https://app.example.com/invite?token=${inviteToken}`;
-      setInviteLink(link);
-      setShowInviteModal(true);
+      Alert.alert('Success', 'Staff member added successfully');
       resetForm();
     } catch (error) {
       console.error('Failed to add staff member:', error);
@@ -102,8 +80,10 @@ export default function StaffScreen() {
         role: formData.role || undefined,
         email: formData.email || undefined,
         phone: formData.phone || undefined,
-        permissions: formData.permissions.length > 0 ? formData.permissions : undefined,
+        permissions: [],
+        active: true,
       });
+      Alert.alert('Success', 'Staff member updated successfully');
       resetForm();
     } catch (error) {
       console.error('Failed to update staff member:', error);
@@ -112,12 +92,26 @@ export default function StaffScreen() {
   };
 
   const handleDeleteMember = async (id: string) => {
-    try {
-      await removeStaff(id);
-    } catch (error) {
-      console.error('Failed to remove staff member:', error);
-      Alert.alert('Error', 'Failed to remove staff member. Please try again.');
-    }
+    Alert.alert(
+      'Delete Staff Member',
+      'Are you sure you want to delete this staff member?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await removeStaff(id);
+              Alert.alert('Success', 'Staff member deleted successfully');
+            } catch (error) {
+              console.error('Failed to remove staff member:', error);
+              Alert.alert('Error', 'Failed to remove staff member. Please try again.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const openEditModal = (member: any) => {
@@ -125,9 +119,11 @@ export default function StaffScreen() {
     setFormData({
       name: member.name,
       role: member.role,
+      description: '',
       email: member.email,
       phone: member.phone || '',
-      permissions: member.permissions || [],
+      whatsapp: '',
+      avatar: '',
     });
   };
 
@@ -137,43 +133,33 @@ export default function StaffScreen() {
     setFormData({
       name: '',
       role: '',
+      description: '',
       email: '',
       phone: '',
-      permissions: [],
+      whatsapp: '',
+      avatar: '',
     });
   };
 
-  const copyToClipboard = async (text: string) => {
-    if (Platform.OS === 'web') {
-      await navigator.clipboard.writeText(text);
-    } else {
-      Clipboard.setString(text);
+  const pickAvatar = async () => {
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    if (permissionResult.granted === false) {
+      Alert.alert('Permission Required', 'Please allow access to your photo library.');
+      return;
     }
-    Alert.alert('Copied!', 'Invite link copied to clipboard');
-  };
 
-  const sendInviteEmail = () => {
-    Alert.alert(
-      'Demo Mode',
-      `In production, an invite email would be sent to ${formData.email} with the invite link.`,
-      [{ text: 'OK' }]
-    );
-  };
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
 
-  const togglePermission = (permission: string) => {
-    const newPermissions = formData.permissions.includes(permission)
-      ? formData.permissions.filter(p => p !== permission)
-      : [...formData.permissions, permission];
-    setFormData({ ...formData, permissions: newPermissions });
+    if (!result.canceled) {
+      setFormData({ ...formData, avatar: result.assets[0].uri });
+    }
   };
-
-  const availablePermissions = [
-    { id: 'manage_properties', label: 'Manage Properties' },
-    { id: 'view_analytics', label: 'View Analytics' },
-    { id: 'manage_bookings', label: 'Manage Bookings' },
-    { id: 'respond_inquiries', label: 'Respond to Inquiries' },
-    { id: 'edit_profile', label: 'Edit Profile' },
-  ];
 
   return (
     <View style={styles.container}>
@@ -186,17 +172,17 @@ export default function StaffScreen() {
           style={styles.addHeaderButton}
           onPress={() => setShowAddModal(true)}
         >
-          <Plus size={24} color='#0019ff' />
+          <Plus size={24} color={Colors.primary} />
         </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.infoCard}>
-          <Users size={24} color='#0019ff' />
+          <Users size={24} color={Colors.primary} />
           <View style={styles.infoContent}>
-            <Text style={styles.infoTitle}>Team Collaboration</Text>
+            <Text style={styles.infoTitle}>Team Display</Text>
             <Text style={styles.infoText}>
-              Invite team members via email. They&apos;ll receive a secure link to create their account and join your agency dashboard.
+              Add and display your team members on your Pro agent profile. Show clients who they&apos;ll be working with.
             </Text>
           </View>
         </View>
@@ -205,12 +191,6 @@ export default function StaffScreen() {
           <View style={styles.statBox}>
             <Text style={styles.statValue}>{staffData?.length || 0}</Text>
             <Text style={styles.statLabel}>Team Members</Text>
-          </View>
-          <View style={styles.statBox}>
-            <Text style={styles.statValue}>
-              {staffData?.filter((m: any) => m.active).length || 0}
-            </Text>
-            <Text style={styles.statLabel}>Active</Text>
           </View>
         </View>
 
@@ -223,7 +203,7 @@ export default function StaffScreen() {
             <Users size={64} color={Colors.text.light} />
             <Text style={styles.emptyTitle}>No Team Members</Text>
             <Text style={styles.emptyText}>
-              Add your first team member to start collaborating on properties and client management
+              Add your first team member to display on your profile
             </Text>
             <TouchableOpacity
               style={styles.emptyButton}
@@ -239,17 +219,14 @@ export default function StaffScreen() {
               <View key={member.id} style={styles.memberCard}>
                 <View style={styles.memberLeft}>
                   <View style={styles.avatarContainer}>
-                    <UserCircle size={48} color='#0019ff' />
+                    {member.avatar ? (
+                      <Image source={{ uri: member.avatar }} style={styles.avatar} />
+                    ) : (
+                      <UserCircle size={48} color={Colors.primary} />
+                    )}
                   </View>
                   <View style={styles.memberInfo}>
-                    <View style={styles.memberNameRow}>
-                      <Text style={styles.memberName}>{member.name}</Text>
-                      {!member.active && (
-                        <View style={styles.pendingBadge}>
-                          <Text style={styles.pendingText}>Pending</Text>
-                        </View>
-                      )}
-                    </View>
+                    <Text style={styles.memberName}>{member.name}</Text>
                     <Text style={styles.memberRole}>{member.role}</Text>
                     <View style={styles.memberContacts}>
                       {member.email && (
@@ -265,14 +242,6 @@ export default function StaffScreen() {
                         </View>
                       )}
                     </View>
-                    {member.permissions && member.permissions.length > 0 && (
-                      <View style={styles.permissionsContainer}>
-                        <Shield size={14} color='#0019ff' />
-                        <Text style={styles.permissionsText}>
-                          {member.permissions.length} permission{member.permissions.length !== 1 ? 's' : ''}
-                        </Text>
-                      </View>
-                    )}
                   </View>
                 </View>
                 <View style={styles.memberActions}>
@@ -280,7 +249,7 @@ export default function StaffScreen() {
                     style={styles.actionButton}
                     onPress={() => openEditModal(member)}
                   >
-                    <Edit2 size={18} color='#0019ff' />
+                    <Edit2 size={18} color={Colors.primary} />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.actionButton}
@@ -307,7 +276,7 @@ export default function StaffScreen() {
           <View style={[styles.modalContent, { paddingBottom: insets.bottom + 20 }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                {editingMember ? 'Edit Team Member' : 'Invite Team Member'}
+                {editingMember ? 'Edit Team Member' : 'Add Team Member'}
               </Text>
               <TouchableOpacity onPress={resetForm}>
                 <X size={24} color={Colors.text.secondary} />
@@ -315,6 +284,20 @@ export default function StaffScreen() {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Profile Picture (Optional)</Text>
+                <TouchableOpacity style={styles.avatarPicker} onPress={pickAvatar}>
+                  {formData.avatar ? (
+                    <Image source={{ uri: formData.avatar }} style={styles.avatarPreview} />
+                  ) : (
+                    <View style={styles.avatarPlaceholder}>
+                      <Camera size={32} color={Colors.text.light} />
+                      <Text style={styles.avatarPlaceholderText}>Add Photo</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
+
               <View style={styles.formGroup}>
                 <Text style={styles.label}>Name *</Text>
                 <TextInput
@@ -330,7 +313,7 @@ export default function StaffScreen() {
                 <Text style={styles.label}>Role</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Agent, Manager, Assistant, etc."
+                  placeholder="Senior Agent, Property Manager, etc."
                   placeholderTextColor={Colors.text.light}
                   value={formData.role}
                   onChangeText={(text) => setFormData({ ...formData, role: text })}
@@ -338,7 +321,21 @@ export default function StaffScreen() {
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.label}>Email *</Text>
+                <Text style={styles.label}>Description (Optional)</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  placeholder="Brief bio or description..."
+                  placeholderTextColor={Colors.text.light}
+                  value={formData.description}
+                  onChangeText={(text) => setFormData({ ...formData, description: text })}
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Email (Optional)</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="john@example.com"
@@ -363,29 +360,15 @@ export default function StaffScreen() {
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.label}>Permissions *</Text>
-                <Text style={styles.hint}>Select at least one permission</Text>
-                <View style={styles.permissionsGrid}>
-                  {availablePermissions.map((permission) => (
-                    <TouchableOpacity
-                      key={permission.id}
-                      style={[
-                        styles.permissionChip,
-                        formData.permissions.includes(permission.id) && styles.permissionChipActive,
-                      ]}
-                      onPress={() => togglePermission(permission.id)}
-                    >
-                      <Text
-                        style={[
-                          styles.permissionChipText,
-                          formData.permissions.includes(permission.id) && styles.permissionChipTextActive,
-                        ]}
-                      >
-                        {permission.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
+                <Text style={styles.label}>WhatsApp (Optional)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="+1 234 567 8900"
+                  placeholderTextColor={Colors.text.light}
+                  value={formData.whatsapp}
+                  onChangeText={(text) => setFormData({ ...formData, whatsapp: text })}
+                  keyboardType="phone-pad"
+                />
               </View>
 
               <TouchableOpacity
@@ -393,92 +376,10 @@ export default function StaffScreen() {
                 onPress={editingMember ? handleEditMember : handleAddMember}
               >
                 <Text style={styles.submitButtonText}>
-                  {editingMember ? 'Update Member' : 'Send Invitation'}
+                  {editingMember ? 'Update Member' : 'Add Member'}
                 </Text>
               </TouchableOpacity>
             </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal
-        visible={showInviteModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => {
-          setShowInviteModal(false);
-          setInviteLink(null);
-        }}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.passwordModalContent}>
-            <View style={styles.passwordModalHeader}>
-              <View style={styles.successIconContainer}>
-                <CheckCircle size={56} color="#10B981" strokeWidth={2.5} />
-              </View>
-              <Text style={styles.passwordModalTitle}>Invitation Created!</Text>
-              <Text style={styles.passwordModalSubtitle}>
-                An invite link has been generated. Send it to the staff member to complete setup.
-              </Text>
-            </View>
-
-            <View style={styles.credentialsContainer}>
-              <View style={styles.credentialRow}>
-                <Mail size={20} color={Colors.text.secondary} />
-                <View style={styles.credentialContent}>
-                  <Text style={styles.credentialLabel}>Invited Email</Text>
-                  <Text style={styles.credentialValue}>{formData.email}</Text>
-                </View>
-              </View>
-
-              <View style={styles.credentialRow}>
-                <Key size={20} color={Colors.text.secondary} />
-                <View style={styles.credentialContent}>
-                  <Text style={styles.credentialLabel}>Invite Link</Text>
-                  <View style={styles.passwordValueContainer}>
-                    <Text style={styles.credentialValue} numberOfLines={1} ellipsizeMode="middle">{inviteLink}</Text>
-                    <TouchableOpacity
-                      style={styles.copyButton}
-                      onPress={() => copyToClipboard(inviteLink!)}
-                    >
-                      <Copy size={18} color="#0019ff" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.warningBox}>
-              <Text style={styles.warningText}>
-                ℹ️ The invite link will expire in 7 days. Staff member will create their own password during signup.
-              </Text>
-            </View>
-
-            <View style={styles.passwordModalActions}>
-              <TouchableOpacity
-                style={styles.sendEmailButton}
-                onPress={sendInviteEmail}
-              >
-                <Mail size={20} color={Colors.white} />
-                <Text style={styles.copyAllButtonText}>Send Email Invite (Demo)</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.copyAllButton}
-                onPress={() => copyToClipboard(inviteLink!)}
-              >
-                <Copy size={20} color={Colors.white} />
-                <Text style={styles.copyAllButtonText}>Copy Invite Link</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.doneButton}
-                onPress={() => {
-                  setShowInviteModal(false);
-                  setInviteLink(null);
-                }}
-              >
-                <Text style={styles.doneButtonText}>Done</Text>
-              </TouchableOpacity>
-            </View>
           </View>
         </View>
       </Modal>
@@ -527,7 +428,7 @@ const styles = StyleSheet.create({
   },
   infoCard: {
     flexDirection: 'row' as const,
-    backgroundColor: '#0019ff10',
+    backgroundColor: `${Colors.primary}10`,
     padding: 20,
     borderRadius: 16,
     marginBottom: 24,
@@ -567,7 +468,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 32,
     fontWeight: '700' as const,
-    color: '#0019ff',
+    color: Colors.primary,
     marginBottom: 6,
   },
   statLabel: {
@@ -598,7 +499,7 @@ const styles = StyleSheet.create({
   emptyButton: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
-    backgroundColor: '#0019ff',
+    backgroundColor: Colors.primary,
     paddingVertical: 14,
     paddingHorizontal: 24,
     borderRadius: 12,
@@ -633,40 +534,28 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#0019ff10',
+    backgroundColor: `${Colors.primary}10`,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
+    overflow: 'hidden' as const,
+  },
+  avatar: {
+    width: 48,
+    height: 48,
   },
   memberInfo: {
     flex: 1,
     gap: 6,
-  },
-  memberNameRow: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: 8,
   },
   memberName: {
     fontSize: 16,
     fontWeight: '700' as const,
     color: Colors.text.primary,
   },
-  pendingBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    backgroundColor: '#F59E0B20',
-    borderRadius: 6,
-  },
-  pendingText: {
-    fontSize: 10,
-    fontWeight: '700' as const,
-    color: '#F59E0B',
-    textTransform: 'uppercase' as const,
-  },
   memberRole: {
     fontSize: 14,
     fontWeight: '600' as const,
-    color: '#0019ff',
+    color: Colors.primary,
   },
   memberContacts: {
     gap: 4,
@@ -679,17 +568,6 @@ const styles = StyleSheet.create({
   contactText: {
     fontSize: 12,
     color: Colors.text.light,
-  },
-  permissionsContainer: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: 6,
-    marginTop: 4,
-  },
-  permissionsText: {
-    fontSize: 12,
-    fontWeight: '600' as const,
-    color: '#0019ff',
   },
   memberActions: {
     flexDirection: 'row' as const,
@@ -707,9 +585,7 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    justifyContent: 'center' as const,
-    alignItems: 'center' as const,
-    padding: 20,
+    justifyContent: 'flex-end' as const,
   },
   modalContent: {
     backgroundColor: Colors.white,
@@ -747,33 +623,39 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: Colors.text.primary,
   },
-  permissionsGrid: {
-    flexDirection: 'row' as const,
-    flexWrap: 'wrap' as const,
-    gap: 8,
+  textArea: {
+    minHeight: 80,
+    paddingTop: 16,
   },
-  permissionChip: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 10,
+  avatarPicker: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    overflow: 'hidden' as const,
+    alignSelf: 'center' as const,
+  },
+  avatarPreview: {
+    width: '100%' as const,
+    height: '100%' as const,
+  },
+  avatarPlaceholder: {
+    width: '100%' as const,
+    height: '100%' as const,
     backgroundColor: Colors.gray[100],
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     borderWidth: 2,
-    borderColor: Colors.gray[100],
+    borderColor: Colors.gray[300],
+    borderStyle: 'dashed' as const,
   },
-  permissionChipActive: {
-    backgroundColor: '#0019ff10',
-    borderColor: '#0019ff',
-  },
-  permissionChipText: {
-    fontSize: 13,
+  avatarPlaceholderText: {
+    marginTop: 8,
+    fontSize: 12,
     fontWeight: '600' as const,
-    color: Colors.text.secondary,
-  },
-  permissionChipTextActive: {
-    color: '#0019ff',
+    color: Colors.text.light,
   },
   submitButton: {
-    backgroundColor: '#0019ff',
+    backgroundColor: Colors.primary,
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center' as const,
@@ -783,155 +665,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700' as const,
     color: Colors.white,
-  },
-  hint: {
-    fontSize: 12,
-    color: Colors.text.light,
-    marginTop: -4,
-    marginBottom: 8,
-  },
-  passwordModalContent: {
-    backgroundColor: Colors.white,
-    borderRadius: 32,
-    padding: 40,
-    width: '100%',
-    maxWidth: 480,
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: 0.3,
-    shadowRadius: 40,
-    elevation: 20,
-  },
-  passwordModalHeader: {
-    alignItems: 'center' as const,
-    marginBottom: 32,
-  },
-  successIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#10B98110',
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    marginBottom: 20,
-  },
-  passwordModalTitle: {
-    fontSize: 26,
-    fontWeight: '800' as const,
-    color: Colors.text.primary,
-    marginBottom: 12,
-    textAlign: 'center' as const,
-  },
-  passwordModalSubtitle: {
-    fontSize: 15,
-    color: Colors.text.secondary,
-    textAlign: 'center' as const,
-    lineHeight: 22,
-    paddingHorizontal: 8,
-  },
-  credentialsContainer: {
-    backgroundColor: Colors.gray[50],
-    borderRadius: 15,
-    padding: 24,
-    gap: 20,
-    marginBottom: 24,
-  },
-  credentialRow: {
-    flexDirection: 'row' as const,
-    gap: 16,
-    alignItems: 'center' as const,
-  },
-  credentialContent: {
-    flex: 1,
-  },
-  credentialLabel: {
-    fontSize: 11,
-    fontWeight: '700' as const,
-    color: Colors.text.light,
-    marginBottom: 6,
-    textTransform: 'uppercase' as const,
-    letterSpacing: 0.5,
-  },
-  credentialValue: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: Colors.text.primary,
-    lineHeight: 20,
-  },
-  passwordValueContainer: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: 8,
-  },
-  copyButton: {
-    padding: 8,
-    backgroundColor: '#0019ff10',
-    borderRadius: 100,
-    minWidth: 36,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-  },
-  warningBox: {
-    backgroundColor: '#E0F2FE',
-    padding: 20,
-    borderRadius: 15,
-    marginBottom: 28,
-  },
-  warningText: {
-    fontSize: 13,
-    color: '#0C4A6E',
-    lineHeight: 20,
-    textAlign: 'center' as const,
-  },
-  passwordModalActions: {
-    gap: 14,
-  },
-  sendEmailButton: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    backgroundColor: '#10B981',
-    paddingVertical: 18,
-    borderRadius: 100,
-    gap: 10,
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  copyAllButton: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    backgroundColor: '#0019ff',
-    paddingVertical: 18,
-    borderRadius: 100,
-    gap: 10,
-    shadowColor: '#0019ff',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  copyAllButtonText: {
-    fontSize: 16,
-    fontWeight: '700' as const,
-    color: Colors.white,
-    letterSpacing: 0.3,
-  },
-  doneButton: {
-    alignItems: 'center' as const,
-    paddingVertical: 18,
-    borderRadius: 100,
-    backgroundColor: Colors.gray[50],
-    borderWidth: 2,
-    borderColor: Colors.gray[200],
-  },
-  doneButtonText: {
-    fontSize: 16,
-    fontWeight: '700' as const,
-    color: Colors.text.secondary,
-    letterSpacing: 0.3,
   },
 });

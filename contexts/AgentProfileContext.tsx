@@ -263,13 +263,11 @@ export const [AgentProfileProvider, useAgentProfile] = createContextHook(() => {
   }, [removeSupabaseStaff]);
 
   const hasFeature = useCallback((feature: string): boolean => {
-    const packageFeatures = {
+    const packageFeatures: Record<'free' | 'pro', string[]> = {
       free: ['basic_listing', 'profile_edit', 'banner_upload', 'updates', 'basic_analytics'],
       pro: ['basic_listing', 'profile_edit', 'banner_upload', 'updates', 'basic_analytics', 
-            'booking_calendar', 'messaging', 'verified_badge', 'full_analytics'],
-      agency: ['basic_listing', 'profile_edit', 'banner_upload', 'updates', 'basic_analytics',
-               'booking_calendar', 'messaging', 'verified_badge', 'full_analytics',
-               'staff_accounts', 'shared_dashboard', 'portfolio_page', '3d_tours', 'property_management'],
+            'booking_calendar', 'messaging', 'verified_badge', 'full_analytics',
+            'staff_management', 'carousel'],
     };
 
     return packageFeatures[profile.package].includes(feature);

@@ -9,7 +9,7 @@ export interface AgentProfile {
   specialization?: string;
   licenseNumber?: string;
   yearsOfExperience?: number;
-  packageLevel: 'free' | 'pro' | 'agency';
+  packageLevel: 'free' | 'pro';
   packageExpiry?: Date;
   areasServed?: string;
   website?: string;

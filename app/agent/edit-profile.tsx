@@ -426,12 +426,12 @@ export default function EditProfileScreen() {
               </View>
             </View>
 
-            {profile?.package === 'agency' && (
+            {profile?.package === 'pro' && (
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                   <ImageIcon size={20} color={Colors.primary} />
                   <Text style={styles.sectionTitle}>Featured Cards</Text>
-                  <Text style={styles.sectionSubtitle}>(Agency Only)</Text>
+                  <Text style={styles.sectionSubtitle}>(Pro Only)</Text>
                 </View>
                 <Text style={styles.helperText}>
                   Add custom cards to showcase properties, offers, or services on your profile.

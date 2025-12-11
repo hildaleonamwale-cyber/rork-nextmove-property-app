@@ -209,7 +209,7 @@ export interface Filter {
   listingCategory?: ListingCategory[];
 }
 
-export type AgentPackage = 'free' | 'pro' | 'agency';
+export type AgentPackage = 'free' | 'pro';
 
 export interface ProfileCard {
   id: string;
