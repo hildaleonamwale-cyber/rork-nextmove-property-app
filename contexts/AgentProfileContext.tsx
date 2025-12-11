@@ -50,6 +50,7 @@ export const [AgentProfileProvider, useAgentProfile] = createContextHook(() => {
       yearsExperience: agent.yearsOfExperience,
       package: agent.packageLevel,
       packageExpiry: agent.packageExpiry,
+      companyName: agent.companyName,
       accountSetupComplete: !!agent.companyName,
       specialties: agent.specialization ? [agent.specialization] : [],
       languages: [],

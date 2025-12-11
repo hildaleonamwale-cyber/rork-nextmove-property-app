@@ -26,12 +26,14 @@ import { useUser } from '@/contexts/UserContext';
 import OptimizedImage from '@/components/OptimizedImage';
 import { useSuperAdmin } from '@/contexts/SuperAdminContext';
 import UniformHeader from '@/components/UniformHeader';
+import { useAgentProfile } from '@/contexts/AgentProfileContext';
 
 export default function AccountScreen() {
   const router = useRouter();
   const { isClient, isAgent, switchMode } = useUserMode();
   const { isSuperAdmin, enableSuperAdmin } = useSuperAdmin();
   const { user, isLoading } = useUser();
+  const { profile: agentProfile, isLoading: agentLoading } = useAgentProfile();
 
   const clientMenuSections = [
     {
@@ -97,9 +99,17 @@ export default function AccountScreen() {
           <TouchableOpacity
             style={[styles.modeButton, isAgent && styles.modeButtonActive]}
             onPress={() => {
+              const hasAgentProfile = agentProfile?.accountSetupComplete;
+              console.log('Agent mode clicked - hasAgentProfile:', hasAgentProfile);
+              console.log('Agent profile:', agentProfile);
+              
               if (!isAgent) {
                 switchMode('agent');
-                setTimeout(() => router.push('/agent/onboarding' as any), 100);
+                if (hasAgentProfile) {
+                  setTimeout(() => router.push('/agent/dashboard' as any), 100);
+                } else {
+                  setTimeout(() => router.push('/agent/onboarding' as any), 100);
+                }
               } else {
                 setTimeout(() => router.push('/agent/dashboard' as any), 100);
               }
@@ -113,28 +123,50 @@ export default function AccountScreen() {
         </View>
         
         <View style={styles.profileCard}>
-          {user?.avatar ? (
-            <OptimizedImage 
-              source={{ uri: user.avatar }}
-              style={styles.avatar}
-              contentFit="cover"
-            />
+          {isClient ? (
+            user?.avatar ? (
+              <OptimizedImage 
+                source={{ uri: user.avatar }}
+                style={styles.avatar}
+                contentFit="cover"
+              />
+            ) : (
+              <View style={styles.avatar}>
+                <User size={32} color={Colors.white} />
+              </View>
+            )
           ) : (
-            <View style={styles.avatar}>
-              <User size={32} color={Colors.white} />
-            </View>
+            user?.avatar ? (
+              <OptimizedImage 
+                source={{ uri: user.avatar }}
+                style={styles.avatar}
+                contentFit="cover"
+              />
+            ) : (
+              <View style={styles.avatar}>
+                <Briefcase size={32} color={Colors.white} />
+              </View>
+            )
           )}
           <View style={styles.profileInfo}>
             <Text style={styles.profileName}>
-              {isLoading ? 'Loading...' : (user?.name || 'Guest User')}
+              {isLoading || agentLoading ? 'Loading...' : (
+                isAgent && agentProfile?.companyName ? agentProfile.companyName : (user?.name || 'Guest User')
+              )}
             </Text>
             <Text style={styles.profileEmail}>
-              {isLoading ? 'Loading...' : (user?.email || 'No email')}
+              {isLoading || agentLoading ? 'Loading...' : (user?.email || 'No email')}
             </Text>
           </View>
           <TouchableOpacity 
             style={styles.editButton}
-            onPress={() => router.push('/account/personal-info' as any)}
+            onPress={() => {
+              if (isAgent) {
+                router.push('/agent/edit-profile' as any);
+              } else {
+                router.push('/account/personal-info' as any);
+              }
+            }}
           >
             <Edit size={16} color={Colors.primary} />
           </TouchableOpacity>

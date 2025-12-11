@@ -34,9 +34,19 @@ export default function AgentOnboardingScreen() {
     email: profile.email || '',
     specialties: profile.specialties || [],
   });
-  const [profilePicture, setProfilePicture] = useState<string | null>(null);
+  const [profilePicture, setProfilePicture] = useState<string | null>(user?.avatar || null);
   const [bannerImage, setBannerImage] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
+
+  React.useEffect(() => {
+    console.log('[Onboarding] Profile check:', profile);
+    console.log('[Onboarding] accountSetupComplete:', profile.accountSetupComplete);
+    
+    if (profile.accountSetupComplete) {
+      console.log('[Onboarding] Profile already complete, redirecting to dashboard');
+      router.replace('/agent/dashboard' as any);
+    }
+  }, [profile, router]);
 
   const availableSpecialties = [
     'Residential',
