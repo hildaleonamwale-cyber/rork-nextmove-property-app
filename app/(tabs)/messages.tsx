@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Search, MessageCircle } from 'lucide-react-native';
@@ -47,7 +48,18 @@ export default function MessagesScreen() {
     chat.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  if (!user && !userLoading) {
+  if (userLoading) {
+    return (
+      <View style={styles.container}>
+        <UniformHeader title="Messages" showBorder={false} />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      </View>
+    );
+  }
+
+  if (!user) {
     return (
       <View style={styles.container}>
         <UniformHeader title="Messages" showBorder={false} />

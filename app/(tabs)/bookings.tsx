@@ -123,7 +123,18 @@ export default function BookingsScreen() {
     }
   };
 
-  if (!user && !userLoading) {
+  if (userLoading) {
+    return (
+      <View style={styles.container}>
+        <UniformHeader title="Bookings" showBorder={false} />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      </View>
+    );
+  }
+
+  if (!user) {
     return (
       <View style={styles.container}>
         <UniformHeader title="Bookings" showBorder={false} />

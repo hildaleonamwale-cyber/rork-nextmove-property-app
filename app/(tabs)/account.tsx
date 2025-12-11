@@ -84,7 +84,18 @@ export default function AccountScreen() {
 
   const menuSections = isClient ? clientMenuSections : agentMenuSections;
 
-  if (!user && !isLoading) {
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <UniformHeader title="Account" showBorder={false} />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      </View>
+    );
+  }
+
+  if (!user) {
     return (
       <View style={styles.container}>
         <UniformHeader title="Account" showBorder={false} />

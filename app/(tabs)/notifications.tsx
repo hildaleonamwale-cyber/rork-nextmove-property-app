@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { Bell, MessageCircle, Calendar, Heart, Home } from 'lucide-react-native';
 import Colors from '@/constants/colors';
@@ -113,7 +114,18 @@ export default function NotificationsScreen() {
     }
   };
 
-  if (!user && !userLoading) {
+  if (userLoading) {
+    return (
+      <View style={styles.container}>
+        <UniformHeader title="Notifications" />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      </View>
+    );
+  }
+
+  if (!user) {
     return (
       <View style={styles.container}>
         <UniformHeader title="Notifications" />

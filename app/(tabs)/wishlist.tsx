@@ -36,7 +36,18 @@ export default function WishlistScreen() {
     }
   };
 
-  if (!user && !userLoading) {
+  if (userLoading) {
+    return (
+      <View style={styles.container}>
+        <UniformHeader title="Wishlist" />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      </View>
+    );
+  }
+
+  if (!user) {
     return (
       <View style={styles.container}>
         <UniformHeader title="Wishlist" />
