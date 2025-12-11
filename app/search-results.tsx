@@ -30,6 +30,10 @@ export default function SearchResultsScreen() {
       limit: 50,
     };
 
+    if (params.featured === 'true') {
+      query.featured = true;
+    }
+
     if (params.listingCategory) {
       query.listingCategory = params.listingCategory as ListingCategory;
     }

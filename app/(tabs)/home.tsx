@@ -181,7 +181,7 @@ export default function HomeScreen() {
               icon={Star}
               title="Featured Listings"
               subtitle="Hand-picked premium properties"
-              onActionPress={() => router.push('/search-results' as any)}
+              onActionPress={() => router.push({ pathname: '/search-results' as any, params: { featured: 'true' } })}
             />
             <ScrollView
               horizontal
@@ -234,7 +234,7 @@ export default function HomeScreen() {
               icon={Clock}
               title="Just Listed"
               subtitle="Fresh properties just added"
-              onActionPress={() => router.push('/search-results' as any)}
+              onActionPress={() => router.push({ pathname: '/search-results' as any, params: { sortBy: 'newest' } })}
             />
             <View style={styles.listGrid}>
               {allProperties.slice(0, 4).map((listing: any) => (
@@ -282,7 +282,7 @@ export default function HomeScreen() {
               icon={Grid3x3}
               title="Browse"
               subtitle="Explore more listings"
-              onActionPress={() => router.push('/search-results' as any)}
+              onActionPress={() => router.push({ pathname: '/search-results' as any, params: { showAll: 'true' } })}
             />
             <View style={styles.listGrid}>
               {allProperties.slice(2, 6).map((listing: any) => (
