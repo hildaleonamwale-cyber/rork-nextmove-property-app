@@ -17,6 +17,7 @@ import ConfirmDialog from '@/components/ConfirmDialog';
 import DateTimePickerModal from '@/components/DateTimePickerModal';
 import { useSupabaseBookings } from '@/hooks/useSupabaseBookings';
 import { useUser } from '@/contexts/UserContext';
+import LoginPrompt from '@/components/LoginPrompt';
 
 interface Booking {
   id: string;
@@ -30,7 +31,7 @@ interface Booking {
 export default function BookingsScreen() {
   const [selectedTab, setSelectedTab] = useState<'upcoming' | 'past'>('upcoming');
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const { user } = useUser();
+  const { user, isLoading: userLoading } = useUser();
   const { bookings: allBookings, isLoading: isFetching, updateBookingStatus, refetch } = useSupabaseBookings(user?.id);
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
@@ -121,6 +122,18 @@ export default function BookingsScreen() {
         return Colors.text.secondary;
     }
   };
+
+  if (!user && !userLoading) {
+    return (
+      <View style={styles.container}>
+        <UniformHeader title="Bookings" showBorder={false} />
+        <LoginPrompt 
+          message="Please log in to view and manage your property viewing bookings"
+          icon={Calendar}
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

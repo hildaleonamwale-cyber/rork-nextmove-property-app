@@ -27,6 +27,7 @@ import OptimizedImage from '@/components/OptimizedImage';
 import { useSuperAdmin } from '@/contexts/SuperAdminContext';
 import UniformHeader from '@/components/UniformHeader';
 import { useAgentProfile } from '@/contexts/AgentProfileContext';
+import LoginPrompt from '@/components/LoginPrompt';
 
 export default function AccountScreen() {
   const router = useRouter();
@@ -80,6 +81,18 @@ export default function AccountScreen() {
   ];
 
   const menuSections = isClient ? clientMenuSections : agentMenuSections;
+
+  if (!user && !isLoading) {
+    return (
+      <View style={styles.container}>
+        <UniformHeader title="Account" showBorder={false} />
+        <LoginPrompt 
+          message="Please log in to access your account and manage your settings"
+          icon={User}
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

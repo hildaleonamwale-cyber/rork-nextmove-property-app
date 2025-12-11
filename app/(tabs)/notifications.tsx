@@ -12,6 +12,7 @@ import { DesignSystem } from '@/constants/designSystem';
 import UniformHeader from '@/components/UniformHeader';
 import { useSupabaseNotifications } from '@/hooks/useSupabaseNotifications';
 import { useUser } from '@/contexts/UserContext';
+import LoginPrompt from '@/components/LoginPrompt';
 
 interface Notification {
   id: string;
@@ -23,7 +24,7 @@ interface Notification {
 }
 
 export default function NotificationsScreen() {
-  const { user } = useUser();
+  const { user, isLoading: userLoading } = useUser();
   const { 
     notifications: notificationsData, 
     markAsRead: markAsReadMutation, 
@@ -111,6 +112,18 @@ export default function NotificationsScreen() {
         return Colors.text.secondary;
     }
   };
+
+  if (!user && !userLoading) {
+    return (
+      <View style={styles.container}>
+        <UniformHeader title="Notifications" />
+        <LoginPrompt 
+          message="Please log in to view your notifications and stay updated"
+          icon={Bell}
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

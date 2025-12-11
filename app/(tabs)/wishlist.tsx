@@ -16,13 +16,14 @@ import { DesignSystem } from '@/constants/designSystem';
 import UniformHeader from '@/components/UniformHeader';
 import { useSupabaseWishlist } from '@/hooks/useSupabaseWishlist';
 import { useUser } from '@/contexts/UserContext';
+import LoginPrompt from '@/components/LoginPrompt';
 
 type TabType = 'wishlist' | 'following';
 
 export default function WishlistScreen() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>('wishlist');
-  const { user } = useUser();
+  const { user, isLoading: userLoading } = useUser();
   const { wishlist, removeFromWishlist, isLoading, error } = useSupabaseWishlist(user?.id || '');
 
   const favoriteProperties = wishlist;
@@ -34,6 +35,18 @@ export default function WishlistScreen() {
       console.error('Failed to remove from wishlist:', error);
     }
   };
+
+  if (!user && !userLoading) {
+    return (
+      <View style={styles.container}>
+        <UniformHeader title="Wishlist" />
+        <LoginPrompt 
+          message="Please log in to view your saved properties and followed agencies"
+          icon={Heart}
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

@@ -14,6 +14,7 @@ import { useSupabaseConversations } from '@/hooks/useSupabaseMessages';
 import { useUser } from '@/contexts/UserContext';
 import { DesignSystem } from '@/constants/designSystem';
 import UniformHeader from '@/components/UniformHeader';
+import LoginPrompt from '@/components/LoginPrompt';
 
 interface ChatPreview {
   id: string;
@@ -27,7 +28,7 @@ interface ChatPreview {
 export default function MessagesScreen() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
-  const { user } = useUser();
+  const { user, isLoading: userLoading } = useUser();
 
   const { conversations: conversationsData, isLoading: isLoadingConversations } = useSupabaseConversations(user?.id || '');
 
@@ -45,6 +46,18 @@ export default function MessagesScreen() {
   const filteredChats = chats.filter(chat =>
     chat.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  if (!user && !userLoading) {
+    return (
+      <View style={styles.container}>
+        <UniformHeader title="Messages" showBorder={false} />
+        <LoginPrompt 
+          message="Please log in to access your messages and chat with agents"
+          icon={MessageCircle}
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
